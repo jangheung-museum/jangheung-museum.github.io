@@ -1033,7 +1033,8 @@
         "var x=await u.json();if(!x.ok)throw new Error(x.error);var s=x.result.stats,e=s.excludedCounts||{},c=0;for(var k in e)c+=e[k];" +
         "b.textContent='✓ 장흥 명단 업데이트 완료\\n유효 '+s.includedTickets.toLocaleString()+'장 · 주문 '+s.orders.toLocaleString()+'건 · 구매자 '+s.keys.toLocaleString()+'명\\n취소·환불 '+c+'장';" +
         "}catch(err){b.style.background='#C9353D';b.textContent='✕ 장흥 명단 업데이트 실패\\n'+err.message;}b.textContent+='\\n(누르면 닫혀요)';setTimeout(function(){b.remove()},60000);})();";
-      return 'javascript:' + encodeURIComponent(src);
+      // 반드시 void로 감싸야 함: 결과값(Promise)이 있으면 브라우저가 페이지를 그 값으로 바꿔 버림
+      return 'javascript:' + encodeURIComponent('void(' + src.replace(/;\s*$/, '') + ')');
     }
 
     function tabManage(el) {
