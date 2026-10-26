@@ -526,7 +526,7 @@
     var CANCEL_SORT = 'new', CANCEL_ST = '';
     function tabCancel(el) {
       el.innerHTML = '<section class="glass panel"><h2>취소·환불 목록</h2>' +
-        '<p class="desc">NOL 명단에서 <b>취소완료·환불요청</b> 상태인 주문이에요. 명단을 업데이트할 때마다 함께 갱신돼요. <span class="tag amber">노란 줄</span>은 취소·환불했지만 <b>입장 기록이 있는</b> 구매자예요.</p>' +
+        '<p class="desc">NOL 명단에서 <b>취소완료·환불요청</b> 상태인 주문이에요. 명단을 업데이트할 때마다 함께 갱신돼요. <span class="tag amber">노란 줄</span>은 취소·환불했지만 <b>입장 기록이 있는</b> 구매자예요. 입장 기록이 있으면 입장 때 입력한 <b>실명</b>이 함께 나와요.</p>' +
         '<div id="cx" class="loading"><span class="spinner"></span>불러오는 중…</div></section>';
       var box = el.querySelector('#cx');
       call('adminCancels', TOKEN).then(function (list) {
@@ -551,7 +551,7 @@
             if (CANCEL_ST === 'entered') { if (!c.entered) return false; }
             else if (CANCEL_ST && c.status !== CANCEL_ST) return false;
             if (!s) return true;
-            return (c.maskedName + ' ' + c.last4 + ' ' + c.orderNo + ' ' + c.pins).toLowerCase().indexOf(s) >= 0;
+            return (c.maskedName + ' ' + (c.realNames || []).join(' ') + ' ' + c.last4 + ' ' + c.orderNo + ' ' + c.pins).toLowerCase().indexOf(s) >= 0;
           });
           var f = (CANCEL_SORT === 'bnew' || CANCEL_SORT === 'bold') ? 'buyDate' : 'changedAt';
           var dir = (CANCEL_SORT === 'new' || CANCEL_SORT === 'bnew') ? -1 : 1;
@@ -561,7 +561,7 @@
           tb.innerHTML = rows.slice(0, 1000).map(function (c) {
             return '<tr class="' + (c.entered ? 'hl' : '') + '"><td>' + esc(String(c.changedAt).slice(5, 16)) + '</td>' +
               '<td><span class="tag ' + (c.status === '환불요청' ? 'amber' : 'blue') + '">' + esc(c.status) + '</span>' + (c.entered ? ' <span class="tag" style="background:var(--red);color:#fff">입장 후</span>' : '') + '</td>' +
-              '<td><b>' + esc(c.maskedName) + '</b></td><td>' + esc(c.last4) + '</td><td class="num">' + num(c.tickets) + '</td>' +
+              '<td>' + ((c.realNames && c.realNames.length) ? '<b>' + esc(c.realNames.join(', ')) + '</b><br><small style="color:var(--muted)">명단 ' + esc(c.maskedName) + '</small>' : '<b>' + esc(c.maskedName) + '</b>') + '</td><td>' + esc(c.last4) + '</td><td class="num">' + num(c.tickets) + '</td>' +
               '<td style="font-size:12.5px">' + esc(c.orderNo) + '</td><td style="font-size:12.5px">' + esc(c.channel) + '</td>' +
               '<td>' + esc(String(c.buyDate).slice(5, 16)) + '</td>' +
               '<td>' + (c.entered ? '<b style="color:var(--red)">' + c.entered + '회 · ' + c.enteredPeople + '명</b><br><small>' + esc(String(c.lastEntry).slice(5, 16)) + '</small>' : '<span style="color:var(--muted)">없음</span>') + '</td></tr>';
