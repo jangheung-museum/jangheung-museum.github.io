@@ -470,6 +470,23 @@
             '<span style="font-size:11.5px;color:var(--muted);margin-top:4px">' + h + '</span></div>';
         }).join('') + '</div>';
     }
+    function stackHbars(rows, museums) {
+      var tot = rows.map(function (r) { return museums.reduce(function (a, mm) { return a + (r.parts[mm.id] || 0); }, 0); });
+      var max = Math.max.apply(null, tot.concat([1]));
+      return '<div style="display:flex;gap:6px 14px;flex-wrap:wrap;margin:0 0 10px;font-size:13px;font-weight:700;color:var(--ink-2)">' +
+        museums.map(function (mm) { return '<span style="display:inline-flex;align-items:center;gap:6px"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:' + (MCOL[mm.id] || '#999') + '"></i>' + esc(mm.short) + '</span>'; }).join('') + '</div>' +
+        '<div style="display:grid;gap:8px">' + rows.map(function (r, i) {
+          var tip = r.label + ' · ' + museums.map(function (mm) { return mm.short + ' ' + (r.parts[mm.id] || 0) + '명'; }).join(' · ');
+          var segs = museums.map(function (mm) {
+            var v = r.parts[mm.id] || 0; if (!v) return '';
+            return '<span style="display:block;flex:none;width:' + (v / max * 100).toFixed(2) + '%;background:' + (MCOL[mm.id] || '#999') + ';border-right:1px solid rgba(255,255,255,.7)"></span>';
+          }).join('');
+          return '<div title="' + esc(tip) + '" style="display:grid;grid-template-columns:96px 1fr 44px;align-items:center;gap:10px">' +
+            '<span style="font-weight:800;font-size:14px">' + esc(r.label) + '</span>' +
+            '<span style="display:flex;height:16px;border-radius:8px;overflow:hidden;background:#EFEBE1">' + segs + '</span>' +
+            '<span style="text-align:right;font-weight:800">' + num(tot[i]) + '</span></div>';
+        }).join('') + '</div>';
+    }
     function hourList() { var a = []; for (var h = 9; h <= 18; h++) a.push(h); return a; }
 
     function updBarHtml() {
@@ -632,7 +649,7 @@
         '<div class="toggle" role="group"><button data-r="entries" aria-pressed="' + (REGION_MODE === 'entries') + '">입장 인원 합계</button><button data-r="unique" aria-pressed="' + (REGION_MODE === 'unique') + '">실방문 인원</button></div>' +
         '<p class="desc" style="margin-top:-4px">' + (REGION_MODE === 'unique' ? '구매자별 첫 입장 때 고른 지역 × 한 번에 가장 많이 들어온 인원' : '모든 입장 확인 건의 인원 합 (재방문 포함)') + '</p>' + hbars(regions, '명') + '</section>' +
         '<section class="glass panel"><h2>연령대별 방문 인원</h2><p class="desc">' + (REGION_MODE === 'unique' ? '구매자별로 한 번에 가장 많이 들어온 때의 연령 구성' : '모든 입장 확인 건의 연령대 인원 합 (재방문 포함)') + ' · 지역 카드의 보기 방식과 함께 바뀌어요</p>' + hbars(ages, '명') + '</section>' +
-        '<section class="glass panel"><h2>날짜별 입장 인원</h2><p class="desc">' + esc(md(m.start)) + ' ~ ' + esc(md(m.end)) + '</p>' + hbars(days, '명') + '</section>' +
+        '<section class="glass panel"><h2>날짜별 입장 인원</h2><p class="desc">' + esc(md(m.start)) + ' ~ ' + esc(md(m.end)) + ' · 색은 미술관이에요. 막대에 마우스를 올리면 미술관별 인원이 보여요.</p>' + stackHbars(dayList.map(function (d) { return { label: md(d), parts: D.byDate[d] || {} }; }), m.museums) + '</section>' +
         '<section class="glass panel"><h2>시간대별 입장 인원</h2><p class="desc">9시 ~ 18시 (입장 확인 시각 기준) · 색은 미술관이에요. 막대에 마우스를 올리면 미술관별 인원이 보여요.</p>' + stackVbars(hourList(), D.byHourMuseum || {}, m.museums) + '</section>' +
         '</div>' +
         '<section class="glass panel" style="margin-top:14px"><h2>날짜별 요약</h2><p class="desc">줄을 누르면 그날 내역으로 이동해요.</p><div class="tbl-wrap"><table><thead><tr><th>날짜</th><th class="num">입장 건수</th><th class="num">입장 인원</th>' +
