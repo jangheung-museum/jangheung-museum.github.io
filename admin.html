@@ -533,7 +533,12 @@
         box.className = '';
         box.innerHTML = '<div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
           '<input type="search" id="cq" placeholder="성함·뒷자리·주문번호 검색" style="flex:1;min-width:200px">' +
-          '<select id="cst" class="input" style="width:auto"><option value="">전체 상태</option><option value="취소완료">취소완료</option><option value="환불요청">환불요청</option></select>' +
+          '<select id="cst" class="input" style="width:auto">' +
+            [['', '전체 상태', list.length], ['취소완료', '취소완료', list.filter(function (c) { return c.status === '취소완료'; }).length],
+             ['환불요청', '환불요청', list.filter(function (c) { return c.status === '환불요청'; }).length],
+             ['entered', '입장 후 취소·환불', list.filter(function (c) { return c.entered; }).length]].map(function (o) {
+              return '<option value="' + o[0] + '">' + o[1] + ' (' + o[2] + ')</option>';
+            }).join('') + '</select>' +
           '<select id="cso" class="input" style="width:auto"><option value="new">최신순 (변경일)</option><option value="old">오래된순 (변경일)</option><option value="bnew">구매일 최신순</option><option value="bold">구매일 오래된순</option></select>' +
           '<span id="cn" style="color:var(--muted);font-weight:700"></span></div>' +
           '<div class="tbl-wrap"><table><thead><tr><th>변경일</th><th>상태</th><th>구매자</th><th>뒷자리</th><th class="num">매수</th><th>주문번호</th><th>채널</th><th>구매일</th><th>입장 기록</th></tr></thead><tbody id="ctb"></tbody></table></div>';
@@ -543,7 +548,8 @@
           CANCEL_ST = st.value; CANCEL_SORT = so.value;
           var s = q.value.trim().toLowerCase();
           var rows = list.filter(function (c) {
-            if (CANCEL_ST && c.status !== CANCEL_ST) return false;
+            if (CANCEL_ST === 'entered') { if (!c.entered) return false; }
+            else if (CANCEL_ST && c.status !== CANCEL_ST) return false;
             if (!s) return true;
             return (c.maskedName + ' ' + c.last4 + ' ' + c.orderNo + ' ' + c.pins).toLowerCase().indexOf(s) >= 0;
           });
@@ -554,12 +560,12 @@
           cn.textContent = num(rows.length) + '건 · ' + num(tickets) + '장';
           tb.innerHTML = rows.slice(0, 1000).map(function (c) {
             return '<tr class="' + (c.entered ? 'hl' : '') + '"><td>' + esc(String(c.changedAt).slice(5, 16)) + '</td>' +
-              '<td><span class="tag ' + (c.status === '환불요청' ? 'amber' : 'blue') + '">' + esc(c.status) + '</span></td>' +
+              '<td><span class="tag ' + (c.status === '환불요청' ? 'amber' : 'blue') + '">' + esc(c.status) + '</span>' + (c.entered ? ' <span class="tag" style="background:var(--red);color:#fff">입장 후</span>' : '') + '</td>' +
               '<td><b>' + esc(c.maskedName) + '</b></td><td>' + esc(c.last4) + '</td><td class="num">' + num(c.tickets) + '</td>' +
               '<td style="font-size:12.5px">' + esc(c.orderNo) + '</td><td style="font-size:12.5px">' + esc(c.channel) + '</td>' +
               '<td>' + esc(String(c.buyDate).slice(5, 16)) + '</td>' +
               '<td>' + (c.entered ? '<b style="color:var(--red)">' + c.entered + '회 · ' + c.enteredPeople + '명</b><br><small>' + esc(String(c.lastEntry).slice(5, 16)) + '</small>' : '<span style="color:var(--muted)">없음</span>') + '</td></tr>';
-          }).join('') || '<tr><td colspan="9" class="empty">해당하는 취소·환불 건이 없어요.</td></tr>';
+          }).join('') || '<tr><td colspan="9" class="empty">' + (CANCEL_ST === 'entered' ? '입장한 뒤 취소·환불한 구매자는 아직 없어요.' : '해당하는 취소·환불 건이 없어요.') + '</td></tr>';
         }
         q.addEventListener('input', draw); st.addEventListener('change', draw); so.addEventListener('change', draw); draw();
       }).catch(function (e) { box.className = ''; box.innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
