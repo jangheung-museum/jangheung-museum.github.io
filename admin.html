@@ -476,7 +476,12 @@
         kp('입장 인원 합계', t.people, '명', '입장 확인 ' + num(t.entries) + '건의 인원 합 (재방문 포함)', 'accent') +
         kp('실방문 인원', t.uniquePeople, '명', '구매자별로 한 번에 가장 많이 들어온 인원의 합') +
         kp('방문한 구매자', t.groups, '팀', '구매자 대비 ' + t.usageRate + '%') +
-        kp('판매 (유효 티켓)', t.soldTickets, '장', '주문 ' + num(t.orders) + '건 · 구매자 ' + num(t.buyerKeys) + '명') +
+        kp('판매 (유효 티켓)', t.soldTickets, '장', (function () {
+          var c = m.cancel || { orders: 0, tickets: 0, enteredOrders: 0 };
+          return '총 판매 ' + num(t.soldTickets + c.tickets) + '장<br>주문 ' + num(t.orders) + '건 · 구매자 ' + num(t.buyerKeys) + '명<br>' +
+            '취소·환불 ' + num(c.tickets) + '장 (' + num(c.orders) + '건)' +
+            (c.enteredOrders ? ' · <b style="color:var(--red)">입장 후 취소 ' + num(c.enteredOrders) + '건</b>' : '');
+        })(), 'sold') +
         kp('직원 수동 입장', t.manual, '건', '명단에 없어 PIN으로 처리 · 2시간 내 재입장 ' + t.dups + '건') +
         '</div>' +
         '<div class="grid g2">' +
@@ -489,6 +494,8 @@
         '<section class="glass panel"><h2>시간대별 입장 인원</h2><p class="desc">9시 ~ 18시 (입장 확인 시각 기준)</p>' + vbars(hours, '명') + '</section>' +
         '</div>' +
         (m.testRecords ? '<div class="notice warn">' + (m.testMode ? '테스트 모드라서 테스트 기록 ' + m.testRecords + '건도 위 집계에 포함돼 있어요. 테스트 모드를 끄면 빠져요.' : '테스트 기록 ' + m.testRecords + '건은 위 집계에서 빠져 있어요.') + ' [기록·관리] 탭에서 지울 수 있어요.</div>' : '');
+      var soldCard = el.querySelector('.kpi.sold');
+      if (soldCard) { soldCard.style.cursor = 'pointer'; soldCard.title = '취소·환불 목록 보기'; soldCard.addEventListener('click', function () { TAB = 'cancel'; render(); }); }
       el.querySelectorAll('.toggle button').forEach(function (b) {
         b.addEventListener('click', function () { REGION_MODE = b.getAttribute('data-r'); tabOverview(el); });
       });
