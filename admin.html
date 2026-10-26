@@ -395,7 +395,7 @@
 
     function render() {
       var t = D.totals, m = D.meta;
-      var checkN = D.merged.filter(function (x) { return x.nameConflict; }).length + D.dups.length + D.manual.length;
+      var checkN = D.merged.filter(function (x) { return x.nameConflict; }).length + D.manual.length;
       root.innerHTML = '<div class="shell">' +
         '<div class="top"><h1 class="hand"><span class="g">장흥</span> <span class="b">미술관여행</span></h1>' +
         '<div class="meta">입장 관리 · 기준 ' + esc(m.now) + '<br>명단: ' + esc(m.lastUpload || '아직 업로드 안 함') + '</div>' +
@@ -477,7 +477,7 @@
         kp('실방문 인원', t.uniquePeople, '명', '구매자별로 한 번에 가장 많이 들어온 인원의 합') +
         kp('방문한 구매자', t.groups, '팀', '구매자 대비 ' + t.usageRate + '%') +
         kp('판매 (유효 티켓)', t.soldTickets, '장', '주문 ' + num(t.orders) + '건 · 구매자 ' + num(t.buyerKeys) + '명') +
-        kp('확인 필요', t.dups + t.manual, '건', '중복 ' + t.dups + ' · 직원 수동 ' + t.manual) +
+        kp('직원 수동 입장', t.manual, '건', '명단에 없어 PIN으로 처리 · 2시간 내 재입장 ' + t.dups + '건') +
         '</div>' +
         '<div class="grid g2">' +
         '<section class="glass panel"><h2>미술관별 입장 인원</h2><p class="desc">입장 확인 때 선택한 “함께 입장하는 인원”의 합계예요. 막대에 마우스를 올리면 건수·그룹 수가 보여요.</p>' + hbars(museums, '명') + '</section>' +
@@ -583,8 +583,8 @@
         '<section class="glass panel"><h2>다른 사람일 수 있는 구매자 <span class="tag red">' + conflicts.length + '</span></h2>' +
         '<p class="desc">NOL 명단 이름이 가려져 있어(마스킹) 한 사람으로 합쳐졌는데, 실제 입력한 성함이 서로 다른 경우예요. (예: 김민정·김수정 → 김*정) 구매 매수가 두 사람 몫이 합쳐져 있을 수 있어요.</p>' +
         mergedTable(conflicts, true) + '</section>' +
-        '<section class="glass panel"><h2>중복 입장 <span class="tag amber">' + D.dups.length + '</span></h2>' +
-        '<p class="desc">같은 구매자가 같은 미술관에서 짧은 시간 안에 다시 확인한 기록이에요. 기록은 남고 집계에도 들어가요. 캡처 화면 재사용이 의심되면 확인해 보세요.</p>' +
+        '<section class="glass panel"><h2>2시간 내 재입장 <span class="tag blue">' + D.dups.length + '</span></h2>' +
+        '<p class="desc">같은 구매자가 같은 미술관에서 2시간 안에 다시 입장한 기록이에요. 무제한 이용권이라 정상 재입장일 수 있어요. 참고용으로만 보세요.</p>' +
         (D.dups.length ? '<div class="tbl-wrap"><table>' + recHead + '<tbody>' + D.dups.map(recRow).join('') + '</tbody></table></div>' : '<div class="empty">없어요.</div>') + '</section>' +
         '<section class="glass panel"><h2>직원 수동 입장 <span class="tag blue">' + D.manual.length + '</span></h2>' +
         '<p class="desc">명단에서 찾지 못해 직원 PIN으로 처리한 입장이에요. 다음 명단 업로드 후 실제 구매자인지 확인해 보세요.</p>' +
@@ -900,7 +900,7 @@
         call('adminRecords', TOKEN).then(function (rs) {
           b.disabled = false;
           downloadCsv('입장기록_' + m.now.slice(0, 10) + '.csv',
-            ['입장ID', '일시', '미술관', '성함(실명)', '뒷자리', '입장인원', '지역', '구매매수', '확인방식', '중복', '테스트', '직전입장', '명단이름(참고)'].concat((m.ageBands || []).map(function (a) { return '연령_' + a; })),
+            ['입장ID', '일시', '미술관', '성함(실명)', '뒷자리', '입장인원', '지역', '구매매수', '확인방식', '2시간내재입장', '테스트', '직전입장', '명단이름(참고)'].concat((m.ageBands || []).map(function (a) { return '연령_' + a; })),
             rs.map(function (r) { return [r.id, r.time, r.museumName, r.typedName, r.last4, r.people, r.region, r.tickets, r.method, r.dup ? 'Y' : '', r.test ? 'Y' : '', r.prev, r.maskedName].concat(r.ages || (m.ageBands || []).map(function () { return ''; })); }));
         }).catch(function (e) { b.disabled = false; el.querySelector('#dlm').innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
       });
