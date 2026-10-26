@@ -1,20 +1,933 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+  <base target="_top">
   <meta charset="utf-8">
+  <script>if (/[?&]page=admin\b/.test(location.search)) location.replace('admin.html');</script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>장흥 미술관여행 입장 확인</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<style>
+  /* ───── 색 (야외 햇빛 대비 기준: 흰 글자 배경은 대비 5:1 이상) ───── */
+  :root {
+    --paper: #F4F1EA;
+    --paper-2: #FBFAF6;
+    --card: #FFFFFF;
+    --ink: #1F2124;
+    --ink-2: #44474C;
+    --muted: #66645E;
+    --line: #E1DBCD;
+    --green: #4BB27A;          /* 제목·장식용 */
+    --green-ink: #1F7A4A;      /* 흰 글자 배경 (5.3:1) */
+    --green-ink-d: #145533;
+    --green-text: #226E45;     /* 밝은 배경 위 초록 글자 */
+    --green-soft: #DDF0E4;
+    --blue: #4A66B4;           /* 흰 글자 배경 (5.5:1) */
+    --blue-d: #2E3A8C;
+    --blue-soft: #E3E8F6;
+    --yellow: #F5E04A;
+    --yellow-soft: #FFF6C7;
+    --amber: #F5C24A;          /* 검은 글자 배경 (9.8:1) */
+    --amber-d: #C8931C;
+    --red: #C9353D;
+    --red-soft: #FBE3E4;
+    --title: 'Jua', 'Pretendard', sans-serif;
+    --body: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    --spring: cubic-bezier(.34, 1.56, .64, 1);
+    --glass-bg: linear-gradient(140deg, rgba(255,255,255,.86), rgba(255,255,255,.66));
+    --glass-blur: blur(18px) saturate(170%);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background-color: var(--paper);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .4 0 0 0 0 .3 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+    color: var(--ink);
+    font-family: var(--body);
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    overflow-x: hidden;
+  }
+  button, input, select { font-family: inherit; }
+
+  /* ───── 배경: 떠다니는 색 덩어리 (유리 뒤에 비치는 색) ───── */
+  .bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .bg .blob { position: absolute; border-radius: 50%; filter: blur(46px); opacity: .55; will-change: transform; }
+  .bg .b1 { width: 300px; height: 300px; background: #9ED9B5; top: 18%; left: -120px; animation: drift1 26s ease-in-out infinite alternate; }
+  .bg .b2 { width: 280px; height: 280px; background: #AFC0EC; top: 46%; right: -120px; animation: drift2 30s ease-in-out infinite alternate; }
+  .bg .b3 { width: 220px; height: 220px; background: #F8E98A; bottom: -60px; left: 20%; animation: drift1 34s ease-in-out infinite alternate-reverse; }
+  @keyframes drift1 { to { transform: translate3d(70px, -40px, 0) scale(1.12); } }
+  @keyframes drift2 { to { transform: translate3d(-60px, 50px, 0) scale(.92); } }
+  .float { animation: floaty 9s ease-in-out infinite; will-change: transform; }
+  .float.f2 { animation-duration: 11s; animation-delay: -3s; }
+  .float.f3 { animation-duration: 13s; animation-delay: -6s; }
+  @keyframes floaty {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--r, 0deg)); }
+    50% { transform: translate3d(0, -12px, 0) rotate(calc(var(--r, 0deg) + 8deg)); }
+  }
+
+  /* ───── 손글씨 제목 + 흰 외곽선 ───── */
+  .hand {
+    font-family: var(--title); font-weight: 400; letter-spacing: -0.5px;
+    paint-order: stroke fill; -webkit-text-stroke: 7px #fff;
+    text-shadow: 0 3px 0 rgba(0,0,0,.06), 0 6px 14px rgba(60,50,20,.12);
+  }
+
+  /* ───── 리퀴드 글래스 ───── */
+  .glass {
+    position: relative; isolation: isolate;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border-radius: 22px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.95),
+      inset 0 -14px 26px -20px rgba(74,102,180,.35),
+      inset 10px 0 18px -16px rgba(245,224,74,.45),
+      0 1px 0 rgba(0,0,0,.03),
+      0 20px 40px -24px rgba(50,45,20,.40);
+  }
+  /* 테두리 하이라이트 (빛 받는 가장자리) */
+  .glass::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none; z-index: 2;
+    background: linear-gradient(145deg, rgba(255,255,255,1) 0%, rgba(255,255,255,.25) 35%, rgba(255,255,255,.08) 55%, rgba(255,255,255,.7) 85%, rgba(255,255,255,.95) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+  }
+  /* 표면 반사광 (--gx, --gy 로 움직임) */
+  .glass::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+    background: radial-gradient(120% 80% at var(--gx, 25%) var(--gy, -10%), rgba(255,255,255,.75), rgba(255,255,255,0) 55%);
+    transition: background-position .2s;
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass { background: rgba(255,255,255,.96); }
+  }
+  /* 저사양 기기: 블러·배경 움직임 끄기 */
+  .lite .glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255,255,255,.96); }
+  .lite .bg .blob { animation: none; filter: blur(30px); }
+  .lite .float { animation: none; }
+
+  /* ───── 마스킹테이프 · 스티커 ───── */
+  .tape {
+    position: absolute; width: 74px; height: 22px; z-index: 3;
+    background: rgba(245, 224, 74, .78);
+    box-shadow: 0 1px 2px rgba(0,0,0,.08);
+    -webkit-mask: linear-gradient(90deg, transparent 0 2px, #000 2px calc(100% - 2px), transparent calc(100% - 2px));
+  }
+  .tape.pink { background: rgba(232, 168, 170, .6); }
+  .tape.mint { background: rgba(160, 214, 184, .75); }
+  .sticker { position: absolute; pointer-events: none; }
+
+  /* ───── 찢어진 종이 (관리자 로그인 등) ───── */
+  .paper { position: relative; background: var(--card); border-radius: 6px; box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 10px 26px -12px rgba(60,50,20,.28); }
+  .torn-top::before, .torn-bottom::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 12px; background: var(--card);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M0 12 L0 6 L6 3 L11 7 L17 2 L23 6 L28 4 L34 8 L40 3 L46 6 L51 1 L57 5 L63 3 L69 7 L74 2 L80 5 L86 3 L92 8 L98 4 L104 6 L109 2 L115 6 L120 4 L120 12 Z' fill='black'/%3E%3C/svg%3E") 0 0 / 120px 12px repeat-x;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M0 12 L0 6 L6 3 L11 7 L17 2 L23 6 L28 4 L34 8 L40 3 L46 6 L51 1 L57 5 L63 3 L69 7 L74 2 L80 5 L86 3 L92 8 L98 4 L104 6 L109 2 L115 6 L120 4 L120 12 Z' fill='black'/%3E%3C/svg%3E") 0 0 / 120px 12px repeat-x;
+  }
+  .torn-top::before { top: -11px; }
+  .torn-bottom::after { bottom: -11px; transform: scaleY(-1); }
+
+  /* ───── 티켓 (양쪽 노치, 점선 위치 --ny) ───── */
+  .ticket {
+    position: relative; border-radius: 20px;
+    -webkit-mask: radial-gradient(circle 15px at 0 var(--ny, 50%), transparent 14.5px, #000 15px) left / 51% 100% no-repeat,
+                  radial-gradient(circle 15px at 100% var(--ny, 50%), transparent 14.5px, #000 15px) right / 51% 100% no-repeat;
+            mask: radial-gradient(circle 15px at 0 var(--ny, 50%), transparent 14.5px, #000 15px) left / 51% 100% no-repeat,
+                  radial-gradient(circle 15px at 100% var(--ny, 50%), transparent 14.5px, #000 15px) right / 51% 100% no-repeat;
+  }
+
+  /* ───── 버튼 (눌릴 때 탄성) ───── */
+  .btn {
+    position: relative; display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-height: 62px; padding: 14px 18px;
+    border: 0; border-radius: 18px; cursor: pointer;
+    font-size: 21px; font-weight: 800; letter-spacing: -0.3px;
+    background: linear-gradient(180deg, #5873C2, var(--blue)); color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 0 var(--blue-d), 0 12px 22px -12px rgba(46,58,140,.6);
+    transition: transform .35s var(--spring), box-shadow .2s ease, background .2s;
+    -webkit-tap-highlight-color: transparent; text-decoration: none;
+  }
+  .btn:active { transform: translateY(3px) scale(.97); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 1px 0 var(--blue-d); transition-duration: .08s; }
+  .btn.green { background: linear-gradient(180deg, #2A8B57, var(--green-ink)); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 4px 0 var(--green-ink-d), 0 12px 22px -12px rgba(20,85,51,.6); }
+  .btn.green:active { box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 1px 0 var(--green-ink-d); }
+  .btn.off, .btn:disabled { background: #DADCE3; color: var(--ink-2); box-shadow: 0 4px 0 #B9BCC6; }
+  .btn:disabled { cursor: not-allowed; }
+  .btn.ghost { background: rgba(255,255,255,.7); color: var(--ink); box-shadow: inset 0 0 0 2px var(--line); min-height: 54px; font-size: 18px; }
+  .btn.small { min-height: 42px; font-size: 15px; padding: 8px 14px; border-radius: 12px; width: auto; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 0 var(--blue-d); }
+  .btn.small.ghost { box-shadow: inset 0 0 0 2px var(--line); }
+
+  .spinner { width: 20px; height: 20px; border-radius: 50%; border: 3px solid rgba(255,255,255,.45); border-top-color: #fff; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-7px); } 40%, 60% { transform: translateX(7px); } }
+  @keyframes pop { 0% { transform: scale(.6); } 55% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  :focus-visible { outline: 3px solid var(--blue-d); outline-offset: 3px; }
+
+  /* 움직임 줄이기 설정: 장식 애니메이션 끄기 (확인 화면 시계는 유지) */
+  @media (prefers-reduced-motion: reduce) {
+    .bg .blob, .float { animation: none !important; }
+    .btn { transition: none; }
+    .btn:active { transform: none; }
+  }
+</style>
+
   <style>
-    html, body { margin: 0; height: 100%; background: #F4F1EA; }
-    iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
+    .wrap { position: relative; z-index: 1; max-width: 460px; margin: 0 auto; padding: 0 16px 32px; }
+    .wrap.has-dock { padding-bottom: 190px; }
+    .testbar { position: relative; z-index: 2; background: var(--yellow); color: #2F2800; font-weight: 800; font-size: 15px; text-align: center; padding: 9px 12px; }
+
+    /* 상단 */
+    .hero { position: relative; text-align: center; padding: 26px 0 6px; }
+    .hero .kicker { display: inline-block; font-size: 15px; font-weight: 800; color: var(--ink-2); padding: 7px 14px; border-radius: 999px; }
+    .hero h1 { margin: 10px 0 0; line-height: 1.02; font-size: 50px; }
+    .hero h1 .g { color: var(--green); display: block; font-size: 42px; }
+    .hero h1 .b { color: var(--blue); display: block; }
+
+    /* 미술관 라벨 (유리 + 테이프) */
+    .mtag { margin: 20px auto 22px; padding: 18px 18px 15px; text-align: center; transform: rotate(-1.2deg); max-width: 350px; }
+    .mtag .tape { top: -11px; left: 50%; margin-left: -37px; transform: rotate(3deg); }
+    .mtag .here { font-size: 14px; font-weight: 800; color: var(--muted); letter-spacing: .5px; }
+    .mtag .name { font-family: var(--title); font-size: 31px; color: var(--blue-d); line-height: 1.15; margin-top: 2px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .mtag .hours { font-size: 14px; color: var(--ink-2); margin-top: 5px; font-weight: 600; }
+
+    /* 카드 */
+    .card { padding: 24px 20px 22px; margin-top: 14px; }
+    .step { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; color: var(--green-text); margin-bottom: 14px; letter-spacing: .3px; }
+    .step i { font-style: normal; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--green-ink); color: #fff; font-size: 13px; }
+    .field { margin-bottom: 18px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label, .q { display: flex; align-items: center; gap: 8px; font-size: 19px; font-weight: 800; margin-bottom: 9px; letter-spacing: -0.3px; }
+    .req { display: inline-block; white-space: nowrap; flex: none; font-size: 12.5px; font-weight: 800; color: #fff; background: var(--red); padding: 2px 7px; border-radius: 6px; letter-spacing: 0; }
+    .sub { font-size: 15px; color: var(--ink-2); font-weight: 600; margin: -4px 0 12px; }
+    .input {
+      width: 100%; height: 62px; padding: 0 16px; font-size: 23px; font-weight: 700;
+      border: 2px solid rgba(68,71,76,.25); border-radius: 14px; background: rgba(255,255,255,.85); color: var(--ink);
+      transition: border-color .15s, background .15s, box-shadow .2s;
+    }
+    .input::placeholder { color: #9A978F; font-weight: 600; }
+    .input:focus { outline: none; border-color: var(--blue); background: #fff; box-shadow: 0 0 0 4px rgba(74,102,180,.18); }
+    .phone { display: flex; align-items: center; border: 2px solid rgba(68,71,76,.25); border-radius: 14px; background: rgba(255,255,255,.85); height: 62px; overflow: hidden; transition: box-shadow .2s, border-color .15s; }
+    .phone:focus-within { border-color: var(--blue); background: #fff; box-shadow: 0 0 0 4px rgba(74,102,180,.18); }
+    .phone span { padding: 0 4px 0 16px; font-size: 20px; font-weight: 700; color: var(--muted); white-space: nowrap; letter-spacing: 1px; }
+    .phone input { flex: 1; min-width: 0; border: 0; background: transparent; height: 100%; font-size: 28px; font-weight: 800; letter-spacing: 7px; padding: 0 12px 0 2px; color: var(--ink); }
+    .phone input::placeholder { color: #B5B2AA; }
+    .phone input:focus { outline: none; }
+    .hint { font-size: 15.5px; color: var(--ink-2); line-height: 1.55; margin: 2px 0 0; padding: 10px 12px; border-radius: 12px; background: rgba(221,240,228,.7); }
+
+    .found { display: flex; gap: 12px; align-items: center; padding: 14px 14px; margin-top: 14px; border-radius: 18px; background: linear-gradient(140deg, rgba(221,240,228,.92), rgba(221,240,228,.7)); }
+    .found .ic { flex: none; width: 42px; height: 42px; border-radius: 50%; background: var(--green-ink); display: grid; place-items: center; }
+    .found b { display: block; font-size: 18px; }
+    .found span { font-size: 16px; color: var(--ink-2); font-weight: 600; }
+    .found button { margin-left: auto; flex: none; background: none; border: 0; color: var(--green-text); font-weight: 800; font-size: 15px; text-decoration: underline; cursor: pointer; padding: 8px; }
+    .warn { background: var(--yellow-soft); border: 2px dashed #D9B52A; border-radius: 16px; padding: 12px 14px; font-size: 16px; line-height: 1.5; margin-top: 14px; color: var(--ink); }
+    .warn b { color: #6E4700; }
+
+    /* 인원 카드 — 가장 눈에 띄게 */
+    .people { padding: 22px 18px 20px; margin-top: 14px; }
+    .people.glass { background: linear-gradient(150deg, rgba(227,232,246,.95), rgba(255,255,255,.72)); }
+    .people .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .people .q { font-size: 21px; margin-bottom: 4px; flex-wrap: wrap; row-gap: 4px; }
+    .pdisp { flex: none; min-width: 88px; height: 76px; border-radius: 20px; display: flex; align-items: baseline; justify-content: center; gap: 2px; padding: 8px 10px 0;
+      background: #fff; box-shadow: inset 0 0 0 2px rgba(74,102,180,.25); color: var(--blue-d); }
+    .pdisp b { font-family: var(--title); font-weight: 400; font-size: 52px; line-height: 1; display: inline-block; }
+    .pdisp b.pop { animation: pop .45s var(--spring); }
+    .pdisp small { font-size: 20px; font-weight: 800; }
+    .pdisp.empty { color: #A8A59D; box-shadow: inset 0 0 0 2px rgba(201,53,61,.35); }
+
+    .seg { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 10px; margin-top: 8px; }
+    .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .opt { position: relative; display: block; }
+    .opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; z-index: 1; }
+    .opt span {
+      display: flex; align-items: center; justify-content: center; min-height: 58px; padding: 8px 10px; text-align: center;
+      border-radius: 16px; font-size: 19px; font-weight: 800; color: var(--ink);
+      background: rgba(255,255,255,.82); box-shadow: inset 0 0 0 2px rgba(68,71,76,.2), 0 2px 0 rgba(0,0,0,.04);
+      transition: transform .35s var(--spring), background .15s, box-shadow .15s, color .15s;
+    }
+    .seg .opt span { min-height: 70px; font-size: 26px; }
+    .seg .opt span small { font-size: 16px; margin-left: 1px; }
+    .opt input:active + span { transform: scale(.93); transition-duration: .08s; }
+    .opt input:checked + span {
+      background: linear-gradient(180deg, #5873C2, var(--blue)); color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 4px 0 var(--blue-d), 0 10px 18px -10px rgba(46,58,140,.7);
+      transform: translateY(-2px);
+    }
+    .opt input:focus-visible + span { outline: 3px solid var(--blue-d); outline-offset: 3px; }
+
+    /* 연령대 카드 */
+    .ages .agelist { display: grid; gap: 8px; margin-top: 10px; }
+    .agerow { display: grid; grid-template-columns: 1fr 52px 46px 52px; align-items: center; gap: 6px; padding: 6px 6px 6px 14px; border-radius: 16px;
+      background: rgba(255,255,255,.82); box-shadow: inset 0 0 0 2px rgba(68,71,76,.14); transition: background .15s, box-shadow .15s; }
+    .agerow.on { background: rgba(227,232,246,.95); box-shadow: inset 0 0 0 2px var(--blue); }
+    .agerow .al { font-size: 18px; font-weight: 800; color: var(--ink); }
+    .agerow .ac { font-family: var(--title); font-weight: 400; font-size: 30px; text-align: center; color: var(--blue-d); display: inline-block; }
+    .agerow .ac.pop { animation: pop .45s var(--spring); }
+    .agerow .st { width: 52px; height: 52px; border: 0; border-radius: 14px; font-size: 30px; font-weight: 800; line-height: 1; cursor: pointer;
+      background: #fff; color: var(--blue-d); box-shadow: inset 0 0 0 2px rgba(74,102,180,.35), 0 2px 0 rgba(0,0,0,.05); transition: transform .3s var(--spring); }
+    .agerow .st.plus { background: var(--blue); color: #fff; box-shadow: 0 3px 0 var(--blue-d); }
+    .agerow .st:active { transform: scale(.9); transition-duration: .08s; }
+    .agerow .st:disabled { opacity: .3; cursor: default; box-shadow: none; transform: none; }
+    .agesum { margin-top: 12px; text-align: right; font-size: 18px; font-weight: 800; color: var(--muted); }
+    .agesum b { font-size: 26px; color: var(--ink); }
+    .agesum.done, .agesum.done b { color: var(--green-text); }
+
+    .need { animation: shake .5s ease; }
+    .need, .need.glass { box-shadow: 0 0 0 3px var(--red), 0 20px 40px -24px rgba(50,45,20,.4) !important; }
+
+    .consent { padding: 16px; }
+    .consent label { display: flex; gap: 12px; align-items: flex-start; font-size: 18px; font-weight: 800; cursor: pointer; line-height: 1.4; }
+    .consent input { width: 28px; height: 28px; margin: 0; accent-color: var(--blue); flex: none; }
+    .consent dl { margin: 12px 0 0 40px; font-size: 14.5px; color: var(--ink-2); line-height: 1.6; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; }
+    .consent dt { font-weight: 800; color: var(--ink); }
+    .consent dd { margin: 0; }
+    .consent p { margin: 10px 0 0 40px; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+
+    /* 하단 고정 버튼 (유리) */
+    .dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; padding: 0 12px calc(12px + env(safe-area-inset-bottom)); pointer-events: none; }
+    .dock-in { max-width: 460px; margin: 0 auto; padding: 12px 12px 12px; border-radius: 26px; pointer-events: auto; transform: translateY(0); transition: transform .45s var(--spring); }
+    .dock[hidden] { display: block; }
+    .dock[hidden] .dock-in { transform: translateY(160%); }
+    .checks { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
+    .checks:empty { display: none; }
+    .ck { display: inline-flex; align-items: center; gap: 5px; font-size: 14.5px; font-weight: 800; padding: 6px 11px; border-radius: 999px; background: rgba(255,255,255,.9); color: var(--ink-2); box-shadow: inset 0 0 0 1.5px rgba(68,71,76,.2); transition: background .2s, color .2s; }
+    .ck i { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font-style: normal; font-size: 12px; background: #E3E0D8; color: transparent; }
+    .ck.ok { background: var(--green-soft); color: var(--green-text); box-shadow: inset 0 0 0 1.5px rgba(31,122,74,.35); }
+    .ck.ok i { background: var(--green-ink); color: #fff; }
+
+    /* 결과 티켓 */
+    .stage { perspective: 1000px; margin-top: 16px; }
+    .tk { color: #fff; padding: 26px 22px 22px; text-align: center; overflow: hidden; transform-origin: 50% 0; }
+    .tk.ok { background: linear-gradient(160deg, #24865A, var(--green-ink) 55%, #1A6B41); }
+    .tk.dup { background: linear-gradient(160deg, #F8CD62, var(--amber) 60%, #EFB43A); color: var(--ink); }
+    .tk.enter { animation: ticketIn .9s var(--spring) both; }
+    @keyframes ticketIn { 0% { transform: translateY(70px) rotateX(-75deg) scale(.9); opacity: 0; } 60% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+    /* 유리 광택 (기울기·자동으로 이동 → 캡처 재사용 방지) */
+    .tk .sheen { position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      background: radial-gradient(90% 55% at var(--gx, 30%) var(--gy, 20%), rgba(255,255,255,.28), rgba(255,255,255,0) 60%); }
+    .tk .sweep { position: absolute; top: -40%; bottom: -40%; width: 38%; left: -60%; pointer-events: none; z-index: 0;
+      background: linear-gradient(100deg, rgba(255,255,255,0), rgba(255,255,255,.22) 45%, rgba(255,255,255,.34) 50%, rgba(255,255,255,0));
+      transform: rotate(14deg); animation: sweep 3.2s ease-in-out infinite; }
+    @keyframes sweep { 0% { left: -60%; } 60%, 100% { left: 130%; } }
+    .tk > *:not(.sheen):not(.sweep) { position: relative; z-index: 1; }
+    .tk .badge { width: 78px; height: 78px; border-radius: 50%; background: rgba(255,255,255,.25); display: grid; place-items: center; margin: 0 auto 8px; box-shadow: inset 0 1px 0 rgba(255,255,255,.5); }
+    .tk.dup .badge { background: rgba(31,33,36,.12); }
+    .tk .badge > div { width: 58px; height: 58px; border-radius: 50%; background: #fff; display: grid; place-items: center; }
+    .tk .badge.pop > div { animation: pop .6s var(--spring) .35s both; }
+    .tk h2 { font-family: var(--title); font-weight: 400; font-size: 38px; margin: 0; line-height: 1.1; }
+    .tk .who { font-size: 32px; font-weight: 900; margin-top: 12px; letter-spacing: -0.5px; line-height: 1.2; }
+    .tk .who small { font-size: 22px; font-weight: 800; margin-left: 4px; }
+    .tk .cnt { font-family: var(--title); font-size: 108px; line-height: .95; margin: 8px 0 0; text-shadow: 0 4px 0 rgba(0,0,0,.12); }
+    .tk .cnt small { font-size: 40px; margin-left: 4px; }
+    .tk .cntl { font-size: 17px; font-weight: 800; opacity: .95; margin-top: 2px; }
+    .tk .perf { border-top: 3px dashed rgba(255,255,255,.6); margin: 18px -22px 16px; }
+    .tk.dup .perf { border-color: rgba(31,33,36,.35); }
+    .tk .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; font-size: 15px; font-weight: 700; }
+    .tk .meta div { background: rgba(255,255,255,.16); border-radius: 12px; padding: 10px 12px; box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
+    .tk.dup .meta div { background: rgba(255,255,255,.45); }
+    .tk .meta b { display: block; font-size: 19px; margin-top: 2px; }
+    .tk .meta .full { grid-column: 1 / -1; }
+    .live { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; font-variant-numeric: tabular-nums; font-size: 34px; font-weight: 900; letter-spacing: 1px; }
+    .live i { width: 14px; height: 14px; border-radius: 50%; background: currentColor; animation: blink 1s steps(2, start) infinite; }
+    @keyframes blink { to { visibility: hidden; } }
+    .stripe { height: 12px; margin: 14px -22px -22px; background: repeating-linear-gradient(-45deg, rgba(255,255,255,.4) 0 12px, transparent 12px 24px); background-size: 34px 34px; animation: slide 1.2s linear infinite; }
+    .tk.dup .stripe { background-image: repeating-linear-gradient(-45deg, rgba(31,33,36,.25) 0 12px, transparent 12px 24px); }
+    @keyframes slide { to { background-position: 34px 0; } }
+    .prev { background: rgba(31,33,36,.14); border-radius: 12px; padding: 10px 12px; font-size: 18px; margin-top: 12px; font-weight: 800; }
+    .show-staff { text-align: center; font-size: 18px; font-weight: 800; color: var(--ink); margin: 20px 0 14px; }
+
+    /* 안내 카드 */
+    .msg { text-align: center; padding: 30px 20px 24px; margin-top: 14px; }
+    .msg .x { width: 66px; height: 66px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center; }
+    .msg h2 { font-family: var(--title); font-weight: 400; font-size: 31px; margin: 0 0 12px; line-height: 1.2; }
+    .msg ul { text-align: left; margin: 0 0 18px; padding: 14px 16px 14px 34px; background: rgba(255,255,255,.8); border-radius: 14px; font-size: 16.5px; line-height: 1.6; color: var(--ink-2); }
+    .msg .tel { display: inline-block; font-size: 20px; font-weight: 900; color: var(--blue-d); margin: 0 0 18px; }
+    .stack { display: grid; gap: 12px; }
+    .muted-note { font-size: 15px; color: var(--muted); text-align: center; margin-top: 12px; line-height: 1.5; font-weight: 600; }
+
+    .toast { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 13px 18px; border-radius: 14px; font-size: 16px; font-weight: 700; max-width: calc(100% - 32px); z-index: 9; box-shadow: 0 8px 24px rgba(0,0,0,.25); animation: pop .35s var(--spring); }
+    #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 8; }
+
+    footer { position: relative; z-index: 1; text-align: center; padding: 26px 16px 36px; font-size: 13px; color: var(--muted); line-height: 1.7; font-weight: 600; }
+    footer b { color: var(--ink-2); }
+
+    @media (max-width: 360px) {
+      .hero h1 { font-size: 44px; } .hero h1 .g { font-size: 36px; }
+      .chips { grid-template-columns: 1fr; }
+      .tk .cnt { font-size: 92px; } .tk .who { font-size: 28px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .tk.enter, .tk .badge.pop > div, .pdisp b.pop, .need, .toast { animation: none; }
+      .tk .sweep { animation-duration: 6s; }
+      .stripe { animation-duration: 3s; }
+      .dock-in { transition: none; }
+    }
   </style>
 </head>
 <body>
-  <iframe id="app" title="장흥 미술관여행 입장 확인" allow="vibrate"></iframe>
+  <div class="bg" aria-hidden="true">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  </div>
+  <div id="testbar" class="testbar" hidden>테스트 모드 · 이 기록은 집계에서 빠집니다</div>
+  <div class="wrap" id="wrap">
+    <!-- 떠다니는 스티커 -->
+    <svg class="sticker float" style="top:14px;left:-14px;width:84px;--r:-18deg" viewBox="0 0 100 60" aria-hidden="true"><g fill="#BFD96A"><path d="M8 52 C30 40 58 26 94 8" stroke="#A8C64F" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="30" cy="34" rx="10" ry="5" transform="rotate(-60 30 34)"/><ellipse cx="22" cy="48" rx="10" ry="5" transform="rotate(-10 22 48)"/><ellipse cx="50" cy="24" rx="10" ry="5" transform="rotate(-70 50 24)"/><ellipse cx="44" cy="38" rx="10" ry="5" transform="rotate(0 44 38)"/><ellipse cx="68" cy="16" rx="9" ry="4.5" transform="rotate(-75 68 16)"/><ellipse cx="64" cy="28" rx="9" ry="4.5" transform="rotate(5 64 28)"/></g></svg>
+    <svg class="sticker float f2" style="top:24px;right:6px;width:46px;--r:14deg" viewBox="0 0 100 100" aria-hidden="true"><path fill="#4E7A4C" d="M50 6c9 0 14 12 12 22 9-6 22-6 26 3 4 9-6 17-15 19 9 3 16 13 10 21s-19 5-25-2c1 10-4 22-14 22s-13-12-11-22c-7 7-20 9-25 1s3-18 12-21C11 46 1 38 6 29s17-8 26-2C30 17 41 6 50 6z"/><circle cx="50" cy="50" r="10" fill="#F5E04A"/></svg>
+    <svg class="sticker float f3" style="top:150px;right:-6px;width:40px" viewBox="0 0 100 100" aria-hidden="true"><path fill="#F5E04A" d="M50 0l9 34 35-10-25 26 25 26-35-10-9 34-9-34-35 10 25-26L6 24l35 10z"/></svg>
+    <svg class="sticker float f2" style="top:178px;left:4px;width:34px;--r:12deg" viewBox="0 0 100 100" aria-hidden="true"><path fill="none" stroke="#A9B79A" stroke-width="16" d="M28 10h44l22 40-22 40H28L6 50z"/></svg>
+
+    <header class="hero">
+      <span class="kicker glass">통합이용권 입장 확인</span>
+      <h1 class="hand"><span class="g">장흥</span><span class="b">미술관여행</span></h1>
+    </header>
+
+    <div id="mtag" class="mtag glass" hidden>
+      <div class="tape"></div>
+      <div class="here">지금 계신 곳</div>
+      <div class="name"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="#C9353D" d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg><span id="mname"></span></div>
+      <div class="hours" id="mhours"></div>
+    </div>
+
+    <main id="app" aria-live="polite"></main>
+  </div>
+  <footer id="foot"></footer>
+
+  <div class="dock" id="dock" hidden>
+    <div class="dock-in glass">
+      <div class="checks" id="checks"></div>
+      <button id="cta" class="btn" type="button">확인</button>
+    </div>
+  </div>
+  <canvas id="fx" aria-hidden="true"></canvas>
+
+
+  <div id="bootload" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;font:800 18px Pretendard,sans-serif;color:#44474C;z-index:50;background:#F4F1EA">
+    <div style="width:42px;height:42px;border-radius:50%;border:4px solid rgba(74,102,180,.25);border-top-color:#4A66B4;animation:bl 0.8s linear infinite"></div>
+    <span id="bootmsg">불러오는 중…</span>
+  </div>
+  <style>@keyframes bl{to{transform:rotate(360deg)}}</style>
   <script>
-    // 미술관 구분(?m=gana 등)과 관리자(?page=admin) 파라미터를 그대로 웹앱에 넘김
-    var BASE = 'https://script.google.com/macros/s/AKfycbzIXokugG8nHPZSCT4r3boj_jkImTOvDLSuJhtmt1jpnA8Rb-C0yMTX-ASprG8VBiSz/exec';
-    document.getElementById('app').src = BASE + location.search;
+    var API = 'https://script.google.com/macros/s/AKfycbzIXokugG8nHPZSCT4r3boj_jkImTOvDLSuJhtmt1jpnA8Rb-C0yMTX-ASprG8VBiSz/exec';
+    function apiCall(fn, args) {
+      return fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, args: args || [] }) })
+        .then(function (r) { if (!r.ok) throw new Error('서버 응답 오류 (' + r.status + ')'); return r.json(); })
+        .then(function (j) { if (!j.ok) throw new Error(j.error || '오류가 발생했어요.'); return j.result; });
+    }
+    (function () {
+      var q = new URLSearchParams(location.search);
+      function start(b) {
+        window.BOOT = b;
+        document.querySelectorAll('script[type="text/x-app"]').forEach(function (s) {
+          var n = document.createElement('script'); n.text = s.text; document.body.appendChild(n);
+        });
+        var l = document.getElementById('bootload'); if (l) l.remove();
+      }
+      function go(tries) {
+        apiCall('boot', ['checkin', q.get('m') || '']).then(start).catch(function () {
+          if (tries < 2) return setTimeout(function () { go(tries + 1); }, 1200);
+          document.getElementById('bootmsg').textContent = '연결이 원활하지 않아요. 잠시 후 새로고침해 주세요.';
+        });
+      }
+      document.addEventListener('DOMContentLoaded', function () { go(0); });
+    })();
+  </script>
+  <script type="text/x-app">
+  (function () {
+    'use strict';
+    var M = BOOT.museum;
+    var app = document.getElementById('app');
+    var wrap = document.getElementById('wrap');
+    var dock = document.getElementById('dock');
+    var cta = document.getElementById('cta');
+    var checksEl = document.getElementById('checks');
+    var state = { name: '', l4: '' };
+    var clockTimer = null, tiltOff = null;
+    var dockCfg = null;
+    var REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* 저사양 기기 감지 → 블러·떠다니기 끄기 */
+    (function () {
+      var mem = navigator.deviceMemory, cores = navigator.hardwareConcurrency;
+      if ((mem && mem <= 2) || (cores && cores <= 2)) document.documentElement.classList.add('lite');
+    })();
+    var LITE = document.documentElement.classList.contains('lite');
+
+    /* ---------- 유틸 ---------- */
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function store(k, v) {
+      try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; }
+    }
+    var device = store('jh_dev');
+    if (!device) {
+      device = 'd' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+      store('jh_dev', device);
+    }
+    function call(fn) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return apiCall(fn, args);
+    }
+    function toast(msg) {
+      var old = document.querySelector('.toast'); if (old) old.remove();
+      var t = document.createElement('div');
+      t.className = 'toast'; t.textContent = msg; t.setAttribute('role', 'alert');
+      document.body.appendChild(t);
+      setTimeout(function () { t.remove(); }, 3600);
+    }
+    function netFail() { toast('연결이 원활하지 않아요. 잠시 후 다시 눌러 주세요.'); }
+    function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+    var WD = ['일', '월', '화', '수', '목', '금', '토'];
+    function prettyDate(ymd, withYear) {
+      var p = String(ymd).split('-').map(Number);
+      if (p.length < 3 || !p[0]) return ymd;
+      var d = new Date(p[0], p[1] - 1, p[2]);
+      return (withYear ? p[0] + '. ' : '') + p[1] + '. ' + p[2] + '.(' + WD[d.getDay()] + ')';
+    }
+    function periodText() { return prettyDate(BOOT.start, true) + ' ~ ' + prettyDate(BOOT.end); }
+    function stopFx() {
+      if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+      if (tiltOff) { tiltOff(); tiltOff = null; }
+    }
+    function view(html, scroll) {
+      stopFx();
+      app.innerHTML = html;
+      if (scroll !== false) window.scrollTo({ top: Math.max(0, app.offsetTop - 140), behavior: REDUCED ? 'auto' : 'smooth' });
+    }
+    function radioVal(name) {
+      var el = app.querySelector('input[name="' + name + '"]:checked');
+      return el ? el.value : '';
+    }
+    function flagNeed(el) {
+      if (!el) return;
+      el.classList.remove('need'); void el.offsetWidth; el.classList.add('need');
+      setTimeout(function () { el.classList.remove('need'); }, 1600);
+    }
+
+    /* ---------- 하단 고정 버튼 ---------- */
+    // cfg: { label, green, checks: () => [{label, ok, el}], onGo }
+    function setDock(cfg) {
+      dockCfg = cfg;
+      if (!cfg) { dock.hidden = true; wrap.classList.remove('has-dock'); return; }
+      dock.hidden = false; wrap.classList.add('has-dock');
+      cta.className = 'btn' + (cfg.green ? ' green' : '');
+      cta.disabled = false;
+      cta.textContent = cfg.label;
+      refreshDock();
+    }
+    function refreshDock() {
+      if (!dockCfg) return;
+      var items = dockCfg.checks();
+      var ready = items.every(function (i) { return i.ok; });
+      checksEl.innerHTML = dockCfg.showChecks === false ? '' : items.map(function (i) {
+        return '<span class="ck' + (i.ok ? ' ok' : '') + '"><i>✓</i>' + esc(i.label) + '</span>';
+      }).join('');
+      cta.classList.toggle('off', !ready);
+      cta.setAttribute('aria-disabled', ready ? 'false' : 'true');
+    }
+    function setBusy(on) {
+      cta.disabled = on;
+      cta.innerHTML = on ? '<span class="spinner"></span> 확인 중…' : esc(dockCfg ? dockCfg.label : '');
+    }
+    cta.addEventListener('click', function () {
+      if (!dockCfg || cta.disabled) return;
+      var items = dockCfg.checks();
+      var missing = items.filter(function (i) { return !i.ok; });
+      if (missing.length) {
+        missing.forEach(function (i) { flagNeed(i.el); });
+        var first = missing[0];
+        if (first.el) first.el.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block: 'center' });
+        toast(first.msg || (first.label + '을(를) 확인해 주세요'));
+        buzz(60);
+        return;
+      }
+      dockCfg.onGo();
+    });
+
+    var CHECK_SVG = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    function regionChips(name) {
+      var saved = store('jh_region');
+      return '<div class="chips" role="radiogroup" aria-label="어느 지역에서 오셨나요?">' + BOOT.regions.map(function (r) {
+        return '<label class="opt"><input type="radio" name="' + name + '" value="' + esc(r) + '"' + (saved === r ? ' checked' : '') + '><span>' + esc(r) + '</span></label>';
+      }).join('') + '</div>';
+    }
+    function peopleCard(name, max, preset, sub) {
+      var h = '<section class="people glass" id="sec-people">' +
+        '<div class="head"><div><span class="q">오늘 함께 입장하는 인원 <span class="req">필수</span></span>' +
+        '<div class="sub" style="margin:2px 0 0">' + sub + '</div></div>' +
+        '<div class="pdisp' + (preset ? '' : ' empty') + '" id="pdisp" aria-hidden="true"><b id="pnum">' + (preset || '?') + '</b><small>명</small></div></div>' +
+        '<div class="seg" role="radiogroup" aria-label="오늘 함께 입장하는 인원, 본인 포함">';
+      for (var i = 1; i <= max; i++) {
+        h += '<label class="opt"><input type="radio" name="' + name + '" value="' + i + '"' + (preset === i ? ' checked' : '') + ' aria-label="' + i + '명"><span>' + i + '<small>명</small></span></label>';
+      }
+      return h + '</div></section>';
+    }
+    function bindPeople(name) {
+      app.querySelectorAll('input[name="' + name + '"]').forEach(function (r) {
+        r.addEventListener('change', function () {
+          var d = app.querySelector('#pdisp'), b = app.querySelector('#pnum');
+          d.classList.remove('empty');
+          b.textContent = r.value;
+          b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+          buzz(15);
+        });
+      });
+    }
+    /* ---------- 연령대 카드 ---------- */
+    var AGES = BOOT.ageBands || ['어린이(~12세)', '청소년(13~19세)', '20대', '30대', '40대', '50대', '60대 이상'];
+    var ageState = { counts: [], peopleName: '' };
+    function ageCard() {
+      return '<section class="card glass ages" id="sec-age"><span class="q">함께 오신 분들의 연령대 <span class="req">필수</span></span>' +
+        '<div class="sub" id="agesub" style="margin:2px 0 0">먼저 위에서 인원을 선택해 주세요</div><div class="agelist">' +
+        AGES.map(function (a, i) {
+          return '<div class="agerow" data-i="' + i + '"><span class="al">' + esc(a) + '</span>' +
+            '<button type="button" class="st minus" aria-label="' + esc(a) + ' 한 명 빼기">−</button>' +
+            '<b class="ac" aria-live="polite">0</b>' +
+            '<button type="button" class="st plus" aria-label="' + esc(a) + ' 한 명 더하기">+</button></div>';
+        }).join('') + '</div><div class="agesum" id="agesum"></div></section>';
+    }
+    function agePeople() { return Number(radioVal(ageState.peopleName)) || 0; }
+    function ageSum() { return ageState.counts.reduce(function (a, b) { return a + b; }, 0); }
+    function agesOk() { var n = agePeople(); return n > 0 && ageSum() === n; }
+    function ageRender(popIdx) {
+      var n = agePeople(), s = ageSum();
+      app.querySelectorAll('.agerow').forEach(function (row) {
+        var i = Number(row.getAttribute('data-i')), b = row.querySelector('.ac');
+        b.textContent = ageState.counts[i];
+        if (popIdx === i) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+        row.classList.toggle('on', ageState.counts[i] > 0);
+        row.querySelector('.minus').disabled = ageState.counts[i] <= 0;
+        row.querySelector('.plus').disabled = !n || s >= n;
+      });
+      var sum = app.querySelector('#agesum'), sub = app.querySelector('#agesub');
+      if (sub) sub.textContent = n ? '본인 포함 ' + n + '명을 연령대별로 나눠 주세요' : '먼저 위에서 인원을 선택해 주세요';
+      if (sum) {
+        sum.innerHTML = n ? '<b>' + s + '</b> / ' + n + '명' + (s === n ? ' ✓' : ' · ' + (n - s) + '명 남음') : '';
+        sum.classList.toggle('done', !!n && s === n);
+      }
+    }
+    function ageReset() {
+      var n = agePeople(), saved = null;
+      try { saved = JSON.parse(store('jh_ages') || 'null'); } catch (e) { saved = null; }
+      var ok = saved && saved.length === AGES.length && saved.reduce(function (a, b) { return a + (Number(b) || 0); }, 0) === n;
+      ageState.counts = ok ? saved.map(function (v) { return Number(v) || 0; }) : AGES.map(function () { return 0; });
+      ageRender();
+    }
+    function bindAges(peopleName) {
+      ageState.peopleName = peopleName;
+      ageState.counts = AGES.map(function () { return 0; });
+      app.querySelectorAll('input[name="' + peopleName + '"]').forEach(function (r) { r.addEventListener('change', ageReset); });
+      app.querySelectorAll('.agerow').forEach(function (row) {
+        var i = Number(row.getAttribute('data-i'));
+        row.querySelector('.minus').addEventListener('click', function () {
+          if (ageState.counts[i] > 0) { ageState.counts[i]--; ageRender(i); refreshDock(); buzz(10); }
+        });
+        row.querySelector('.plus').addEventListener('click', function () {
+          if (ageSum() < agePeople()) { ageState.counts[i]++; ageRender(i); refreshDock(); buzz(10); }
+        });
+      });
+      if (agePeople()) ageReset(); else ageRender();
+    }
+    function ageCheck() {
+      return { label: '연령', ok: agesOk(), el: app.querySelector('#sec-age'), msg: '함께 오신 분들의 연령대를 인원수만큼 골라 주세요' };
+    }
+
+    function regionCard(name) {
+      return '<section class="card glass" id="sec-region"><span class="q">어느 지역에서 오셨나요? <span class="req">필수</span></span>' + regionChips(name) + '</section>';
+    }
+    function consentCard() {
+      return '<section class="card glass consent" id="sec-consent">' +
+        '<label><input type="checkbox" id="consent"> <span><span class="req">필수</span> 개인정보 수집·이용에 동의합니다</span></label>' +
+        '<dl>' +
+        '<dt>수집 목적</dt><dd>통합이용권 구매 확인 및 입장 처리, 중복 입장 방지, 방문 통계 작성</dd>' +
+        '<dt>수집 항목</dt><dd>성함(실명), 휴대폰 번호 뒷자리 4자리, 거주 지역(시·도), 입장 인원 및 일행 연령대, 입장 기록(미술관·일시), 접속 기기 식별값</dd>' +
+        '<dt>보유 기간</dt><dd>' + esc(BOOT.retention) + ' 파기 (방문 통계는 개인을 알아볼 수 없는 형태로만 보관)</dd>' +
+        '<dt>거부 권리</dt><dd>동의를 거부하실 수 있어요. 거부하시면 화면 입장 확인은 어렵고, 현장 직원 확인으로 입장하실 수 있어요.</dd>' +
+        '</dl>' +
+        '<p>개인정보 관련 문의: 장흥 미술관여행 사무국 ' + esc(BOOT.phone || '') + '</p></section>';
+    }
+
+    /* ---------- 화면: 미술관 없음 ---------- */
+    function viewNoMuseum() {
+      setDock(null);
+      var links = '';
+      if (BOOT.testMode && BOOT.base) {
+        links = '<div class="stack" style="margin-top:14px">' + BOOT.museums.map(function (m) {
+          return '<a class="btn ghost" href="' + esc(BOOT.base + '?m=' + m.id) + '">' + esc(m.name) + '</a>';
+        }).join('') + '</div>';
+      }
+      view('<section class="glass msg">' +
+        '<div class="x" style="background:var(--blue-soft)"><svg width="30" height="30" viewBox="0 0 24 24"><path fill="none" stroke="#2E3A8C" stroke-width="2.4" d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/></svg></div>' +
+        '<h2>미술관 입구의 QR을<br>다시 찍어 주세요</h2>' +
+        '<p class="muted-note">각 미술관 입구에 붙어 있는 QR로 들어오셔야 입장 확인을 할 수 있어요.</p>' + links + '</section>', false);
+    }
+
+    /* ---------- 화면: 기간 외 ---------- */
+    function viewPeriod(when) {
+      setDock(null);
+      view('<section class="glass msg">' +
+        '<div class="x" style="background:var(--blue-soft)"><svg width="30" height="30" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="#2E3A8C" stroke-width="2.2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="#2E3A8C" stroke-width="2.2" stroke-linecap="round"/></svg></div>' +
+        '<h2>' + (when === 'before' ? '아직 이용 기간 전이에요' : '이용 기간이 끝났어요') + '</h2>' +
+        '<p style="font-size:19px;font-weight:900;margin:0 0 6px">' + esc(periodText()) + '</p>' +
+        '<p class="muted-note">통합이용권은 위 기간에만 사용할 수 있어요.<br>문의 ' + esc(BOOT.phone) + '</p></section>', false);
+    }
+
+    /* ---------- 화면: 1단계 ---------- */
+    function viewStep1() {
+      view('<section class="card glass">' +
+        '<div class="step"><i>1</i> 구매 확인</div>' +
+        '<div class="field"><label for="name">구매하신 분 성함</label>' +
+        '<input id="name" class="input" type="text" autocomplete="name" maxlength="30" placeholder="예) 홍길동" value="' + esc(state.name) + '"></div>' +
+        '<div class="field"><label for="l4">휴대폰 번호 뒷자리</label>' +
+        '<div class="phone"><span>010-****-</span><input id="l4" type="tel" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="0000" value="' + esc(state.l4) + '" aria-label="휴대폰 번호 뒷자리 4자리"></div></div>' +
+        '<p class="hint">함께 오신 분도 <b>티켓을 구매하신 분</b>의 성함과 번호로 확인해 주세요.</p>' +
+        '</section>', state.name ? true : false);
+      var n = app.querySelector('#name'), p = app.querySelector('#l4');
+      function sync() {
+        p.value = p.value.replace(/\D/g, '').slice(0, 4);
+        state.name = n.value; state.l4 = p.value;
+        refreshDock();
+      }
+      n.addEventListener('input', sync); p.addEventListener('input', sync);
+      n.addEventListener('keydown', function (e) { if (e.key === 'Enter') p.focus(); });
+      p.addEventListener('keydown', function (e) { if (e.key === 'Enter') cta.click(); });
+      setDock({
+        label: '구매 내역 확인', showChecks: false,
+        checks: function () {
+          return [
+            { label: '성함', ok: n.value.trim().length >= 1, el: n.parentNode, msg: '구매하신 분 성함을 입력해 주세요' },
+            { label: '뒷자리', ok: p.value.length === 4, el: p.closest('.field'), msg: '휴대폰 뒷자리 4자리를 입력해 주세요' }
+          ];
+        },
+        onGo: function () {
+          setBusy(true);
+          call('apiLookup', M.id, state.name, state.l4, device).then(function (r) {
+            setBusy(false);
+            if (r.ok) return viewStep2(r);
+            if (r.reason === 'notfound') return viewNotFound(r);
+            if (r.reason === 'period') return viewPeriod(r.when);
+            toast(r.msg || '입력하신 내용을 확인해 주세요.');
+          }).catch(function () { setBusy(false); netFail(); });
+        }
+      });
+      sync();
+    }
+
+    /* ---------- 화면: 2단계 ---------- */
+    function viewStep2(r) {
+      var warn = r.recent ? '<div class="warn"><b>오늘 ' + esc(r.recent.time) + '에 ' + esc(r.recent.people) + '명 입장</b> 처리된 기록이 이미 있어요. 추가로 들어오시는 경우에만 계속 진행해 주세요.</div>' : '';
+      var preset = r.tickets === 1 ? 1 : 0;
+      view('<div class="found glass"><div class="ic">' + CHECK_SVG + '</div><div><b>구매 내역 확인됨</b><span>' + esc(r.name || state.name) + ' 님 · 구매 ' + esc(r.tickets) + '매</span></div><button type="button" id="back">다시 입력</button></div>' +
+        warn +
+        peopleCard('people', r.tickets, preset, '본인 포함 · 구매하신 ' + esc(r.tickets) + '매까지 선택') +
+        ageCard() +
+        regionCard('region') +
+        consentCard());
+      bindPeople('people');
+      bindAges('people');
+      var c = app.querySelector('#consent');
+      app.addEventListener('change', refreshDock);
+      app.querySelector('#back').addEventListener('click', function () { app.removeEventListener('change', refreshDock); viewStep1(); });
+      setDock({
+        label: '입장 확인', green: true,
+        checks: function () {
+          return [
+            { label: '인원', ok: !!radioVal('people'), el: app.querySelector('#sec-people'), msg: '오늘 함께 입장하는 인원을 선택해 주세요' },
+            ageCheck(),
+            { label: '지역', ok: !!radioVal('region'), el: app.querySelector('#sec-region'), msg: '어느 지역에서 오셨는지 선택해 주세요' },
+            { label: '동의', ok: c.checked, el: app.querySelector('#sec-consent'), msg: '개인정보 수집·이용에 동의해 주세요' }
+          ];
+        },
+        onGo: function () {
+          var region = radioVal('region');
+          setBusy(true);
+          call('apiCheckin', { m: M.id, name: state.name, l4: state.l4, people: Number(radioVal('people')), ages: ageState.counts.slice(), region: region, consent: c.checked, device: device })
+            .then(function (res) {
+              setBusy(false);
+              if (res.ok) { store('jh_region', region); store('jh_ages', JSON.stringify(ageState.counts)); app.removeEventListener('change', refreshDock); return viewResult(res); }
+              if (res.reason === 'notfound') return viewNotFound(res);
+              if (res.reason === 'period') return viewPeriod(res.when);
+              toast(res.msg || '다시 시도해 주세요.');
+            }).catch(function () { setBusy(false); netFail(); });
+        }
+      });
+    }
+
+    /* ---------- 화면: 결과 ---------- */
+    function viewResult(res) {
+      setDock(null);
+      var dup = res.status === 'dup';
+      var title = dup ? '중복 확인 필요' : (res.manual ? '직원 확인 입장' : '입장 확인');
+      var badge = dup
+        ? '<svg width="36" height="36" viewBox="0 0 24 24"><path d="M12 4v10" stroke="#8A5A00" stroke-width="3.2" stroke-linecap="round"/><circle cx="12" cy="19" r="2" fill="#8A5A00"/></svg>'
+        : '<svg width="36" height="36" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1F7A4A" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      view('<div class="stage"><div class="ticket tk enter ' + (dup ? 'dup' : 'ok') + '" id="tk">' +
+          '<div class="sheen"></div><div class="sweep"></div>' +
+          '<div class="badge pop"><div>' + badge + '</div></div>' +
+          '<h2>' + esc(title) + '</h2>' +
+          '<div class="who">' + esc(res.name) + '<small>님</small></div>' +
+          '<div class="cnt">' + esc(res.people) + '<small>명</small></div>' +
+          '<div class="cntl">오늘 함께 입장 인원</div>' +
+          (dup && res.recent ? '<div class="prev">직전 입장 ' + esc(res.recent.time) + ' · ' + esc(res.recent.people) + '명</div>' : '') +
+          '<div class="perf"></div>' +
+          '<div class="meta"><div class="full">미술관<b>' + esc(res.museum) + '</b></div>' +
+          '<div>날짜<b>' + esc(res.date) + '</b></div><div>확인 시각<b>' + esc(res.time) + '</b></div></div>' +
+          '<div class="live" aria-label="현재 시각"><i></i><span id="clock">--:--:--</span></div>' +
+          (res.test ? '<div class="prev">테스트 기록</div>' : '') +
+          '<div class="stripe"></div>' +
+        '</div></div>' +
+        '<p class="show-staff">' + (dup ? '입구 직원이 인원을 확인한 뒤 들어가 주세요' : '이 화면을 입구 직원에게 보여 주세요') + '</p>' +
+        '<button id="home" class="btn ghost">처음 화면으로</button>');
+      var tk = app.querySelector('#tk'), perf = tk.querySelector('.perf');
+      tk.style.setProperty('--ny', (perf.offsetTop + 1) + 'px');
+      var el = app.querySelector('#clock');
+      function tick() {
+        var d = new Date(), p = function (x) { return (x < 10 ? '0' : '') + x; };
+        el.textContent = p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+      }
+      tick(); clockTimer = setInterval(tick, 1000);
+      tiltOff = tilt(tk);
+      if (!dup) { buzz([30, 40, 60]); if (!REDUCED && !LITE) setTimeout(function () { burst(tk); }, 380); }
+      else buzz([80, 60, 80]);
+      app.querySelector('#home').addEventListener('click', function () { state = { name: '', l4: '' }; viewStep1(); });
+    }
+
+    /* 휴대폰 기울기 / 손가락 움직임에 따라 유리 광택 이동 (권한 요청 없음) */
+    function tilt(el) {
+      function set(x, y) {
+        el.style.setProperty('--gx', Math.max(0, Math.min(100, x)).toFixed(1) + '%');
+        el.style.setProperty('--gy', Math.max(0, Math.min(100, y)).toFixed(1) + '%');
+      }
+      var raf = 0, pend = null;
+      function queue(x, y) { pend = [x, y]; if (!raf) raf = requestAnimationFrame(function () { raf = 0; set(pend[0], pend[1]); }); }
+      function onOri(e) { if (e.gamma == null) return; queue(50 + e.gamma * 1.6, 30 + (e.beta - 45) * 1.2); }
+      function onMove(e) { var r = el.getBoundingClientRect(); queue((e.clientX - r.left) / r.width * 100, (e.clientY - r.top) / r.height * 100); }
+      // iOS는 기울기 권한 팝업이 필요해서 사용하지 않음 (자동 광택만)
+      var needsPerm = window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function';
+      if (!REDUCED && !needsPerm && window.DeviceOrientationEvent) window.addEventListener('deviceorientation', onOri);
+      el.addEventListener('pointermove', onMove);
+      return function () { window.removeEventListener('deviceorientation', onOri); el.removeEventListener('pointermove', onMove); if (raf) cancelAnimationFrame(raf); };
+    }
+
+    /* 입장 성공: 스티커·꽃가루 터뜨리기 (가벼운 캔버스, 약 1.6초) */
+    function burst(fromEl) {
+      var cv = document.getElementById('fx'), dpr = Math.min(2, window.devicePixelRatio || 1);
+      var W = innerWidth, H = innerHeight;
+      cv.width = W * dpr; cv.height = H * dpr;
+      var x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var r = fromEl.getBoundingClientRect(), ox = r.left + r.width / 2, oy = Math.max(60, r.top + 70);
+      var colors = ['#F5E04A', '#4BB27A', '#4A66B4', '#E8A8AA', '#BFD96A', '#ffffff'];
+      var P = [];
+      for (var i = 0; i < 64; i++) {
+        var a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.25, sp = 6 + Math.random() * 9;
+        P.push({ x: ox, y: oy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 5 + Math.random() * 7, rot: Math.random() * 6, vr: (Math.random() - .5) * .4,
+          c: colors[i % colors.length], k: i % 4 });
+      }
+      var t0 = performance.now();
+      function draw(t) {
+        var dt = Math.min(2, (t - (draw.t || t)) / 16.7); draw.t = t;
+        var life = (t - t0) / 1600;
+        x.clearRect(0, 0, W, H);
+        P.forEach(function (p) {
+          p.vy += .32 * dt; p.vx *= .985; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+          x.save(); x.translate(p.x, p.y); x.rotate(p.rot); x.globalAlpha = Math.max(0, 1 - life * life);
+          x.fillStyle = p.c;
+          if (p.k === 0) { star(x, p.r); }
+          else if (p.k === 1) { x.beginPath(); x.ellipse(0, 0, p.r, p.r * .5, 0, 0, Math.PI * 2); x.fill(); }
+          else if (p.k === 2) { x.fillRect(-p.r * .7, -p.r * .35, p.r * 1.4, p.r * .7); }
+          else { flower(x, p.r * .8); }
+          x.restore();
+        });
+        if (life < 1) requestAnimationFrame(draw); else x.clearRect(0, 0, W, H);
+      }
+      requestAnimationFrame(draw);
+    }
+    function star(x, r) { x.beginPath(); for (var i = 0; i < 10; i++) { var a = i * Math.PI / 5, rr = i % 2 ? r * .45 : r; x.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } x.closePath(); x.fill(); }
+    function flower(x, r) { for (var i = 0; i < 5; i++) { x.beginPath(); x.arc(Math.cos(i * 1.2566) * r * .7, Math.sin(i * 1.2566) * r * .7, r * .55, 0, Math.PI * 2); x.fill(); } x.fillStyle = '#F5E04A'; x.beginPath(); x.arc(0, 0, r * .35, 0, Math.PI * 2); x.fill(); }
+
+    /* ---------- 화면: 명단에 없음 ---------- */
+    function viewNotFound(r) {
+      setDock(null);
+      buzz(120);
+      view('<section class="glass msg">' +
+        '<div class="x" style="background:var(--red-soft)"><svg width="30" height="30" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#C9353D" stroke-width="3" stroke-linecap="round"/></svg></div>' +
+        '<h2>구매 내역을<br>찾을 수 없어요</h2>' +
+        '<ul><li><b>티켓을 구매하신 분</b>의 성함인지 확인해 주세요.</li>' +
+        '<li>휴대폰 뒷자리 4자리가 구매 때 입력한 번호와 같은지 확인해 주세요.</li>' +
+        '<li>오늘 구매하셨다면 명단 반영 전일 수 있어요. 직원에게 구매 내역 화면을 보여 주세요.</li></ul>' +
+        '<a class="tel" href="tel:' + esc(String(r.phone || BOOT.phone).replace(/[^\d]/g, '')) + '">문의 ' + esc(r.phone || BOOT.phone) + '</a>' +
+        '<div class="stack"><button id="retry" class="btn">다시 입력하기</button>' +
+        (r.staff ? '<button id="staff" class="btn ghost">직원 확인 후 입장 처리</button>' : '') + '</div>' +
+        '</section>');
+      app.querySelector('#retry').addEventListener('click', viewStep1);
+      var s = app.querySelector('#staff');
+      if (s) s.addEventListener('click', viewManual);
+    }
+
+    /* ---------- 화면: 직원 수동 입장 ---------- */
+    function viewManual() {
+      view('<div class="found glass" style="background:linear-gradient(140deg,rgba(227,232,246,.95),rgba(227,232,246,.75))"><div class="ic" style="background:var(--blue)"><b style="color:#fff;font-size:20px">!</b></div><div><b>직원 확인 입장</b><span>' + esc(state.name) + ' · 뒷자리 ' + esc(state.l4) + '</span></div><button type="button" id="back" style="color:var(--blue-d)">다시 입력</button></div>' +
+        '<p class="muted-note" style="text-align:left;margin:10px 4px 0">직원이 구매 내역을 직접 확인한 경우에만 사용해 주세요.</p>' +
+        peopleCard('mpeople', 8, 0, '본인 포함 · 직원이 확인한 인원') +
+        ageCard() +
+        regionCard('mregion') +
+        consentCard() +
+        '<section class="card glass" id="sec-pin"><div class="field"><label for="pin">직원 PIN <span class="req">필수</span></label><input id="pin" class="input" type="password" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="직원만 입력"></div></section>');
+      bindPeople('mpeople');
+      bindAges('mpeople');
+      var c = app.querySelector('#consent'), pin = app.querySelector('#pin');
+      pin.addEventListener('input', function () { pin.value = pin.value.replace(/\D/g, ''); refreshDock(); });
+      app.addEventListener('change', refreshDock);
+      app.querySelector('#back').addEventListener('click', function () { app.removeEventListener('change', refreshDock); viewStep1(); });
+      setDock({
+        label: '직원 확인 입장 처리',
+        checks: function () {
+          return [
+            { label: '인원', ok: !!radioVal('mpeople'), el: app.querySelector('#sec-people'), msg: '입장 인원을 선택해 주세요' },
+            ageCheck(),
+            { label: '지역', ok: !!radioVal('mregion'), el: app.querySelector('#sec-region'), msg: '지역을 선택해 주세요' },
+            { label: '동의', ok: c.checked, el: app.querySelector('#sec-consent'), msg: '개인정보 수집·이용 동의가 필요해요' },
+            { label: 'PIN', ok: pin.value.length >= 4, el: app.querySelector('#sec-pin'), msg: '직원 PIN을 입력해 주세요' }
+          ];
+        },
+        onGo: function () {
+          var region = radioVal('mregion');
+          setBusy(true);
+          call('apiManualCheckin', { m: M.id, name: state.name, l4: state.l4, people: Number(radioVal('mpeople')), ages: ageState.counts.slice(), region: region, consent: c.checked, pin: pin.value, device: device })
+            .then(function (res) {
+              setBusy(false);
+              if (res.ok) { store('jh_region', region); store('jh_ages', JSON.stringify(ageState.counts)); app.removeEventListener('change', refreshDock); return viewResult(res); }
+              if (res.reason === 'period') return viewPeriod(res.when);
+              toast(res.msg || '다시 시도해 주세요.');
+            }).catch(function () { setBusy(false); netFail(); });
+        }
+      });
+    }
+
+    /* ---------- 시작 ---------- */
+    document.getElementById('testbar').hidden = !BOOT.testMode;
+    document.getElementById('foot').innerHTML =
+      '<b>' + esc(BOOT.eventName) + ' 통합이용권</b> · ' + esc(periodText()) + '<br>문의 ' + esc(BOOT.phone) + '<br>' + esc(BOOT.footer);
+    if (!M) return viewNoMuseum();
+    document.getElementById('mtag').hidden = false;
+    document.getElementById('mname').textContent = M.name;
+    document.getElementById('mhours').textContent = M.hours;
+    if (!BOOT.testMode) {
+      var today = new Date(), p = function (x) { return (x < 10 ? '0' : '') + x; };
+      var ymd = today.getFullYear() + '-' + p(today.getMonth() + 1) + '-' + p(today.getDate());
+      if (BOOT.start && ymd < BOOT.start) return viewPeriod('before');
+      if (BOOT.end && ymd > BOOT.end) return viewPeriod('after');
+    }
+    viewStep1();
+  })();
   </script>
 </body>
 </html>

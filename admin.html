@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>장흥 미술관여행 · 입장 관리</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<style>
+  /* ───── 색 (야외 햇빛 대비 기준: 흰 글자 배경은 대비 5:1 이상) ───── */
+  :root {
+    --paper: #F4F1EA;
+    --paper-2: #FBFAF6;
+    --card: #FFFFFF;
+    --ink: #1F2124;
+    --ink-2: #44474C;
+    --muted: #66645E;
+    --line: #E1DBCD;
+    --green: #4BB27A;          /* 제목·장식용 */
+    --green-ink: #1F7A4A;      /* 흰 글자 배경 (5.3:1) */
+    --green-ink-d: #145533;
+    --green-text: #226E45;     /* 밝은 배경 위 초록 글자 */
+    --green-soft: #DDF0E4;
+    --blue: #4A66B4;           /* 흰 글자 배경 (5.5:1) */
+    --blue-d: #2E3A8C;
+    --blue-soft: #E3E8F6;
+    --yellow: #F5E04A;
+    --yellow-soft: #FFF6C7;
+    --amber: #F5C24A;          /* 검은 글자 배경 (9.8:1) */
+    --amber-d: #C8931C;
+    --red: #C9353D;
+    --red-soft: #FBE3E4;
+    --title: 'Jua', 'Pretendard', sans-serif;
+    --body: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    --spring: cubic-bezier(.34, 1.56, .64, 1);
+    --glass-bg: linear-gradient(140deg, rgba(255,255,255,.86), rgba(255,255,255,.66));
+    --glass-blur: blur(18px) saturate(170%);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background-color: var(--paper);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .4 0 0 0 0 .3 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+    color: var(--ink);
+    font-family: var(--body);
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    overflow-x: hidden;
+  }
+  button, input, select { font-family: inherit; }
+
+  /* ───── 배경: 떠다니는 색 덩어리 (유리 뒤에 비치는 색) ───── */
+  .bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .bg .blob { position: absolute; border-radius: 50%; filter: blur(46px); opacity: .55; will-change: transform; }
+  .bg .b1 { width: 300px; height: 300px; background: #9ED9B5; top: 18%; left: -120px; animation: drift1 26s ease-in-out infinite alternate; }
+  .bg .b2 { width: 280px; height: 280px; background: #AFC0EC; top: 46%; right: -120px; animation: drift2 30s ease-in-out infinite alternate; }
+  .bg .b3 { width: 220px; height: 220px; background: #F8E98A; bottom: -60px; left: 20%; animation: drift1 34s ease-in-out infinite alternate-reverse; }
+  @keyframes drift1 { to { transform: translate3d(70px, -40px, 0) scale(1.12); } }
+  @keyframes drift2 { to { transform: translate3d(-60px, 50px, 0) scale(.92); } }
+  .float { animation: floaty 9s ease-in-out infinite; will-change: transform; }
+  .float.f2 { animation-duration: 11s; animation-delay: -3s; }
+  .float.f3 { animation-duration: 13s; animation-delay: -6s; }
+  @keyframes floaty {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--r, 0deg)); }
+    50% { transform: translate3d(0, -12px, 0) rotate(calc(var(--r, 0deg) + 8deg)); }
+  }
+
+  /* ───── 손글씨 제목 + 흰 외곽선 ───── */
+  .hand {
+    font-family: var(--title); font-weight: 400; letter-spacing: -0.5px;
+    paint-order: stroke fill; -webkit-text-stroke: 7px #fff;
+    text-shadow: 0 3px 0 rgba(0,0,0,.06), 0 6px 14px rgba(60,50,20,.12);
+  }
+
+  /* ───── 리퀴드 글래스 ───── */
+  .glass {
+    position: relative; isolation: isolate;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border-radius: 22px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.95),
+      inset 0 -14px 26px -20px rgba(74,102,180,.35),
+      inset 10px 0 18px -16px rgba(245,224,74,.45),
+      0 1px 0 rgba(0,0,0,.03),
+      0 20px 40px -24px rgba(50,45,20,.40);
+  }
+  /* 테두리 하이라이트 (빛 받는 가장자리) */
+  .glass::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none; z-index: 2;
+    background: linear-gradient(145deg, rgba(255,255,255,1) 0%, rgba(255,255,255,.25) 35%, rgba(255,255,255,.08) 55%, rgba(255,255,255,.7) 85%, rgba(255,255,255,.95) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+  }
+  /* 표면 반사광 (--gx, --gy 로 움직임) */
+  .glass::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+    background: radial-gradient(120% 80% at var(--gx, 25%) var(--gy, -10%), rgba(255,255,255,.75), rgba(255,255,255,0) 55%);
+    transition: background-position .2s;
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass { background: rgba(255,255,255,.96); }
+  }
+  /* 저사양 기기: 블러·배경 움직임 끄기 */
+  .lite .glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255,255,255,.96); }
+  .lite .bg .blob { animation: none; filter: blur(30px); }
+  .lite .float { animation: none; }
+
+  /* ───── 마스킹테이프 · 스티커 ───── */
+  .tape {
+    position: absolute; width: 74px; height: 22px; z-index: 3;
+    background: rgba(245, 224, 74, .78);
+    box-shadow: 0 1px 2px rgba(0,0,0,.08);
+    -webkit-mask: linear-gradient(90deg, transparent 0 2px, #000 2px calc(100% - 2px), transparent calc(100% - 2px));
+  }
+  .tape.pink { background: rgba(232, 168, 170, .6); }
+  .tape.mint { background: rgba(160, 214, 184, .75); }
+  .sticker { position: absolute; pointer-events: none; }
+
+  /* ───── 찢어진 종이 (관리자 로그인 등) ───── */
+  .paper { position: relative; background: var(--card); border-radius: 6px; box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 10px 26px -12px rgba(60,50,20,.28); }
+  .torn-top::before, .torn-bottom::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 12px; background: var(--card);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M0 12 L0 6 L6 3 L11 7 L17 2 L23 6 L28 4 L34 8 L40 3 L46 6 L51 1 L57 5 L63 3 L69 7 L74 2 L80 5 L86 3 L92 8 L98 4 L104 6 L109 2 L115 6 L120 4 L120 12 Z' fill='black'/%3E%3C/svg%3E") 0 0 / 120px 12px repeat-x;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M0 12 L0 6 L6 3 L11 7 L17 2 L23 6 L28 4 L34 8 L40 3 L46 6 L51 1 L57 5 L63 3 L69 7 L74 2 L80 5 L86 3 L92 8 L98 4 L104 6 L109 2 L115 6 L120 4 L120 12 Z' fill='black'/%3E%3C/svg%3E") 0 0 / 120px 12px repeat-x;
+  }
+  .torn-top::before { top: -11px; }
+  .torn-bottom::after { bottom: -11px; transform: scaleY(-1); }
+
+  /* ───── 티켓 (양쪽 노치, 점선 위치 --ny) ───── */
+  .ticket {
+    position: relative; border-radius: 20px;
+    -webkit-mask: radial-gradient(circle 15px at 0 var(--ny, 50%), transparent 14.5px, #000 15px) left / 51% 100% no-repeat,
+                  radial-gradient(circle 15px at 100% var(--ny, 50%), transparent 14.5px, #000 15px) right / 51% 100% no-repeat;
+            mask: radial-gradient(circle 15px at 0 var(--ny, 50%), transparent 14.5px, #000 15px) left / 51% 100% no-repeat,
+                  radial-gradient(circle 15px at 100% var(--ny, 50%), transparent 14.5px, #000 15px) right / 51% 100% no-repeat;
+  }
+
+  /* ───── 버튼 (눌릴 때 탄성) ───── */
+  .btn {
+    position: relative; display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-height: 62px; padding: 14px 18px;
+    border: 0; border-radius: 18px; cursor: pointer;
+    font-size: 21px; font-weight: 800; letter-spacing: -0.3px;
+    background: linear-gradient(180deg, #5873C2, var(--blue)); color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 0 var(--blue-d), 0 12px 22px -12px rgba(46,58,140,.6);
+    transition: transform .35s var(--spring), box-shadow .2s ease, background .2s;
+    -webkit-tap-highlight-color: transparent; text-decoration: none;
+  }
+  .btn:active { transform: translateY(3px) scale(.97); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 1px 0 var(--blue-d); transition-duration: .08s; }
+  .btn.green { background: linear-gradient(180deg, #2A8B57, var(--green-ink)); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 4px 0 var(--green-ink-d), 0 12px 22px -12px rgba(20,85,51,.6); }
+  .btn.green:active { box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 1px 0 var(--green-ink-d); }
+  .btn.off, .btn:disabled { background: #DADCE3; color: var(--ink-2); box-shadow: 0 4px 0 #B9BCC6; }
+  .btn:disabled { cursor: not-allowed; }
+  .btn.ghost { background: rgba(255,255,255,.7); color: var(--ink); box-shadow: inset 0 0 0 2px var(--line); min-height: 54px; font-size: 18px; }
+  .btn.small { min-height: 42px; font-size: 15px; padding: 8px 14px; border-radius: 12px; width: auto; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 0 var(--blue-d); }
+  .btn.small.ghost { box-shadow: inset 0 0 0 2px var(--line); }
+
+  .spinner { width: 20px; height: 20px; border-radius: 50%; border: 3px solid rgba(255,255,255,.45); border-top-color: #fff; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-7px); } 40%, 60% { transform: translateX(7px); } }
+  @keyframes pop { 0% { transform: scale(.6); } 55% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  :focus-visible { outline: 3px solid var(--blue-d); outline-offset: 3px; }
+
+  /* 움직임 줄이기 설정: 장식 애니메이션 끄기 (확인 화면 시계는 유지) */
+  @media (prefers-reduced-motion: reduce) {
+    .bg .blob, .float { animation: none !important; }
+    .btn { transition: none; }
+    .btn:active { transform: none; }
+  }
+</style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <style>
+    body { font-size: 15px; }
+    .shell { max-width: 1180px; margin: 0 auto; padding: 0 16px 60px; }
+    .top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 22px 0 14px; }
+    .top h1 { margin: 0; font-size: 30px; line-height: 1.1; }
+    .top h1 .g { color: var(--green); } .top h1 .b { color: var(--blue); }
+    .top .meta { font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+    .top .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 800; }
+    .pill.test { background: var(--yellow); color: #3a3200; }
+    .pill.live { background: var(--green-soft); color: var(--green-d); }
+    a.lnk { color: var(--blue); font-weight: 700; font-size: 14px; }
+
+    nav.tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 14px; scrollbar-width: none; }
+    nav.tabs button { flex: none; border: 0; background: #fff; color: var(--ink-2); font-weight: 800; font-size: 15px; padding: 10px 16px; border-radius: 10px; cursor: pointer; box-shadow: 0 1px 0 var(--line); }
+    nav.tabs button[aria-selected="true"] { background: var(--blue); color: #fff; box-shadow: 0 3px 0 var(--blue-d); }
+    nav.tabs button .n { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--red); color: #fff; font-size: 12px; }
+
+    .panel { padding: 22px 20px; margin-bottom: 18px; }
+    .panel h2 { margin: 0 0 4px; font-size: 19px; letter-spacing: -0.3px; }
+    .panel .desc { margin: 0 0 16px; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
+    .grid { display: grid; gap: 18px; }
+    .g2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .kpi { padding: 16px 18px; border-radius: 20px; transition: transform .4s var(--spring); }
+    .kpi:hover { transform: translateY(-3px); }
+    .kpi .l { font-size: 13.5px; font-weight: 800; color: var(--ink-2); }
+    .kpi .v { font-size: 32px; font-weight: 900; letter-spacing: -0.5px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .kpi .v small { font-size: 15px; color: var(--ink-2); margin-left: 3px; font-weight: 700; }
+    .kpi .s { font-size: 12.5px; color: var(--muted); margin-top: 2px; font-weight: 600; }
+    .kpi.accent { background: linear-gradient(150deg, rgba(88,115,194,.94), rgba(46,58,140,.92)); color: #fff; }
+    .kpi.accent .l, .kpi.accent .s, .kpi.accent .v small { color: rgba(255,255,255,.88); }
+    .panel { border-radius: 22px; }
+    .shell { position: relative; z-index: 1; }
+
+    /* 막대 그래프 (단일 색) */
+    .bars { display: grid; gap: 8px; }
+    .bar { display: grid; grid-template-columns: minmax(84px, 128px) 1fr 64px; align-items: center; gap: 10px; font-size: 14px; }
+    .bar .lab { color: var(--ink-2); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar .trk { height: 20px; background: #EEEBE3; border-radius: 4px; overflow: hidden; }
+    .bar .fil { height: 100%; background: var(--blue); border-radius: 0 4px 4px 0; min-width: 2px; }
+    .bar .val { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .bar:hover .fil { background: var(--blue-d); }
+    .vbars { display: flex; align-items: flex-end; gap: 4px; height: 160px; padding-top: 18px; }
+    .vb { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+    .vb .c { width: 100%; max-width: 34px; background: var(--blue); border-radius: 4px 4px 0 0; min-height: 2px; position: relative; }
+    .vb:hover .c { background: var(--blue-d); }
+    .vb .t { font-size: 11px; color: var(--ink-2); margin-top: 4px; }
+    .vb .n { font-size: 11px; font-weight: 800; margin-bottom: 2px; font-variant-numeric: tabular-nums; }
+    .toggle { display: inline-flex; background: #EEEBE3; border-radius: 9px; padding: 3px; margin-bottom: 12px; }
+    .toggle button { border: 0; background: transparent; padding: 6px 12px; border-radius: 7px; font-weight: 700; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+    .toggle button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+    .tbl-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--line); background: #fff; }
+    table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+    th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid #F0EDE5; white-space: nowrap; }
+    th { background: var(--paper-2); font-weight: 800; color: var(--ink-2); position: sticky; top: 0; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    tr.hl td { background: #FFF6E0; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 800; }
+    .tag.red { background: var(--red-soft); color: var(--red); }
+    .tag.amber { background: var(--yellow-soft); color: #8a5a00; }
+    .tag.blue { background: var(--blue-soft); color: var(--blue); }
+    .tag.green { background: var(--green-soft); color: var(--green-d); }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--green); }
+    .dot.off { background: #E0DCD2; }
+
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .row input[type=search], .row select, .row input[type=password] { height: 42px; border: 2px solid var(--line); border-radius: 10px; padding: 0 12px; font-size: 15px; background: #fff; min-width: 220px; }
+    .drop { display: block; border: 2px dashed #CFC9BA; border-radius: 14px; padding: 26px; text-align: center; background: var(--paper-2); cursor: pointer; }
+    .drop.on { border-color: var(--blue); background: var(--blue-soft); }
+    .drop b { font-size: 17px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 16px 0; }
+    .stats div { background: var(--paper-2); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--ink-2); }
+    .stats b { display: block; font-size: 20px; color: var(--ink); margin-top: 2px; }
+    .notice { border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.55; margin: 10px 0; }
+    .notice.warn { background: var(--yellow-soft); }
+    .notice.err { background: var(--red-soft); color: #8d1f25; }
+    .notice.ok { background: var(--green-soft); }
+    .notice.info { background: var(--blue-soft); }
+
+    .qrs { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+    .qrc { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 1px 0 var(--line); }
+    .qrc img { width: 100%; border-radius: 8px; border: 1px solid var(--line); display: block; }
+    .qrc h3 { margin: 0 0 8px; font-size: 16px; }
+    .qrc .u { font-size: 11.5px; color: var(--muted); word-break: break-all; margin: 8px 0; }
+    .qrc .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .login { max-width: 380px; margin: 60px auto; padding: 30px 24px; text-align: center; }
+    .login h1 { font-size: 34px; margin: 0 0 4px; line-height: 1.1; }
+    .login input { width: 100%; height: 54px; font-size: 18px; border: 2px solid var(--line); border-radius: 12px; padding: 0 14px; margin: 18px 0 12px; background: var(--paper-2); }
+    .empty { padding: 26px; text-align: center; color: var(--muted); }
+    .loading { padding: 40px; text-align: center; color: var(--ink-2); }
+    .loading .spinner { border-color: rgba(74,102,180,.25); border-top-color: var(--blue); display: inline-block; vertical-align: middle; margin-right: 8px; }
+    @media (max-width: 600px) { .bar { grid-template-columns: 84px 1fr 52px; } .top h1 { font-size: 26px; } }
+  </style>
+</head>
+<body>
+  <div class="bg" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+  <div id="root"></div>
+
+  <div id="bootload" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;font:800 18px Pretendard,sans-serif;color:#44474C;z-index:50;background:#F4F1EA">
+    <div style="width:42px;height:42px;border-radius:50%;border:4px solid rgba(74,102,180,.25);border-top-color:#4A66B4;animation:bl 0.8s linear infinite"></div>
+    <span id="bootmsg">불러오는 중…</span>
+  </div>
+  <style>@keyframes bl{to{transform:rotate(360deg)}}</style>
+  <script>
+    var API = 'https://script.google.com/macros/s/AKfycbzIXokugG8nHPZSCT4r3boj_jkImTOvDLSuJhtmt1jpnA8Rb-C0yMTX-ASprG8VBiSz/exec';
+    function apiCall(fn, args) {
+      return fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, args: args || [] }) })
+        .then(function (r) { if (!r.ok) throw new Error('서버 응답 오류 (' + r.status + ')'); return r.json(); })
+        .then(function (j) { if (!j.ok) throw new Error(j.error || '오류가 발생했어요.'); return j.result; });
+    }
+    (function () {
+      var q = new URLSearchParams(location.search);
+      function start(b) {
+        window.BOOT = b;
+        document.querySelectorAll('script[type="text/x-app"]').forEach(function (s) {
+          var n = document.createElement('script'); n.text = s.text; document.body.appendChild(n);
+        });
+        var l = document.getElementById('bootload'); if (l) l.remove();
+      }
+      function go(tries) {
+        apiCall('boot', ['admin', q.get('m') || '']).then(start).catch(function () {
+          if (tries < 2) return setTimeout(function () { go(tries + 1); }, 1200);
+          document.getElementById('bootmsg').textContent = '연결이 원활하지 않아요. 잠시 후 새로고침해 주세요.';
+        });
+      }
+      document.addEventListener('DOMContentLoaded', function () { go(0); });
+    })();
+  </script>
+  <script type="text/x-app">
+  (function () {
+    'use strict';
+    var root = document.getElementById('root');
+    var TOKEN = null;
+    try { TOKEN = sessionStorage.getItem('jh_adm'); } catch (e) {}
+    var D = null;           // 대시보드 데이터
+    var TAB = 'overview';
+    var RECORDS = null;
+    var REGION_MODE = 'entries';
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function num(n) { return Number(n || 0).toLocaleString('ko-KR'); }
+    function call(fn) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return apiCall(fn, args).catch(function (e) {
+        if (String(e && e.message || e).indexOf('AUTH') >= 0) { logout(); throw new Error('로그인이 만료되었습니다.'); }
+        throw e;
+      });
+    }
+    function errMsg(e) { return String(e && e.message || e).replace(/^Error:\s*/, ''); }
+    function logout() { TOKEN = null; try { sessionStorage.removeItem('jh_adm'); } catch (e) {} renderLogin(); }
+    var WD = ['일', '월', '화', '수', '목', '금', '토'];
+    function md(ymd) { var p = String(ymd).split('-').map(Number); var d = new Date(p[0], p[1] - 1, p[2]); return p[1] + '.' + p[2] + '(' + WD[d.getDay()] + ')'; }
+    function daysBetween(a, b) {
+      var out = []; var p = a.split('-').map(Number), q = b.split('-').map(Number);
+      var d = new Date(p[0], p[1] - 1, p[2]), e = new Date(q[0], q[1] - 1, q[2]);
+      var pad = function (x) { return (x < 10 ? '0' : '') + x; };
+      while (d <= e && out.length < 60) { out.push(d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())); d.setDate(d.getDate() + 1); }
+      return out;
+    }
+
+    /* ---------- CSV ---------- */
+    function cell(v) {
+      v = v == null ? '' : String(v);
+      if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
+      return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+    }
+    function downloadCsv(name, head, rows) {
+      var text = '﻿' + [head].concat(rows).map(function (r) { return r.map(cell).join(','); }).join('\r\n');
+      var blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    }
+
+    /* ---------- 로그인 ---------- */
+    function renderLogin(msg) {
+      root.innerHTML = '<div class="shell"><section class="paper torn-top torn-bottom login">' +
+        '<h1 class="hand"><span style="color:var(--green)">장흥</span> <span style="color:var(--blue)">미술관여행</span></h1>' +
+        '<div style="font-weight:800;color:var(--ink-2)">입장 관리자</div>' +
+        '<input id="pw" type="password" placeholder="관리자 비밀번호" autocomplete="current-password">' +
+        '<button id="lg" class="btn">로그인</button>' +
+        (msg ? '<div class="notice err" style="margin-top:14px">' + esc(msg) + '</div>' : '') +
+        '</section></div>';
+      var pw = document.getElementById('pw'), b = document.getElementById('lg');
+      pw.focus();
+      pw.addEventListener('keydown', function (e) { if (e.key === 'Enter') b.click(); });
+      b.addEventListener('click', function () {
+        b.disabled = true; b.innerHTML = '<span class="spinner"></span>';
+        call('adminLogin', pw.value).then(function (t) {
+          TOKEN = t; try { sessionStorage.setItem('jh_adm', t); } catch (e) {}
+          load();
+        }).catch(function (e) { renderLogin(errMsg(e)); });
+      });
+    }
+
+    /* ---------- 데이터 ---------- */
+    function load() {
+      if (!D) root.innerHTML = '<div class="loading"><span class="spinner"></span>불러오는 중…</div>';
+      call('adminDashboard', TOKEN).then(function (d) { D = d; RECORDS = null; render(); })
+        .catch(function (e) { if (TOKEN) root.innerHTML = '<div class="shell"><div class="notice err" style="margin-top:30px">' + esc(errMsg(e)) + '</div></div>'; });
+    }
+
+    var TABS = [
+      ['overview', '현황'], ['buyers', '구매자 이력'], ['check', '확인 필요'],
+      ['qr', 'QR 만들기'], ['manage', '기록·관리']
+    ];
+
+    function render() {
+      var t = D.totals, m = D.meta;
+      var checkN = D.merged.filter(function (x) { return x.nameConflict; }).length + D.dups.length + D.manual.length;
+      root.innerHTML = '<div class="shell">' +
+        '<div class="top"><h1 class="hand"><span class="g">장흥</span> <span class="b">미술관여행</span></h1>' +
+        '<div class="meta">입장 관리 · 기준 ' + esc(m.now) + '<br>명단: ' + esc(m.lastUpload || '아직 업로드 안 함') + '</div>' +
+        '<div class="right">' + (m.testMode ? '<span class="pill test">테스트 모드 ON</span>' : '<span class="pill live">운영 중</span>') +
+        '<a class="lnk" href="' + esc(m.sheetUrl) + '" target="_blank">스프레드시트 열기 ↗</a>' +
+        '<button class="btn small" id="refresh">새로고침</button>' +
+        '<button class="btn small ghost" id="out">로그아웃</button></div></div>' +
+        '<nav class="tabs" role="tablist">' + TABS.map(function (x) {
+          var badge = x[0] === 'check' && checkN ? '<span class="n">' + checkN + '</span>' : '';
+          return '<button role="tab" data-tab="' + x[0] + '" aria-selected="' + (TAB === x[0]) + '">' + x[1] + badge + '</button>';
+        }).join('') + '</nav><div id="body"></div></div>';
+      document.getElementById('refresh').addEventListener('click', load);
+      document.getElementById('out').addEventListener('click', logout);
+      root.querySelectorAll('nav.tabs button').forEach(function (b) {
+        b.addEventListener('click', function () { TAB = b.getAttribute('data-tab'); render(); });
+      });
+      var body = document.getElementById('body');
+      ({ overview: tabOverview, buyers: tabBuyers, check: tabCheck, upload: tabUpload, nol: tabNol, qr: tabQr, manage: tabManage })[TAB](body);
+    }
+
+    /* 숫자 올라가는 효과 */
+    function countUp(root) {
+      var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      root.querySelectorAll('[data-count]').forEach(function (el) {
+        var to = Number(el.getAttribute('data-count')) || 0;
+        if (reduce || to === 0) { el.textContent = num(to); return; }
+        var t0 = performance.now(), dur = 700;
+        (function step(t) {
+          var k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+          el.textContent = num(Math.round(to * e));
+          if (k < 1) requestAnimationFrame(step);
+        })(t0);
+      });
+    }
+
+    /* ---------- 그래프 ---------- */
+    function hbars(items, unit) {
+      var max = Math.max.apply(null, items.map(function (i) { return i.value; }).concat([1]));
+      return '<div class="bars">' + items.map(function (i) {
+        return '<div class="bar" title="' + esc(i.label + ': ' + num(i.value) + unit + (i.extra ? ' · ' + i.extra : '')) + '">' +
+          '<span class="lab">' + esc(i.label) + '</span>' +
+          '<span class="trk"><span class="fil" style="display:block;width:' + (i.value / max * 100).toFixed(1) + '%"></span></span>' +
+          '<span class="val">' + num(i.value) + '</span></div>';
+      }).join('') + '</div>';
+    }
+    function vbars(items, unit) {
+      var max = Math.max.apply(null, items.map(function (i) { return i.value; }).concat([1]));
+      return '<div class="vbars">' + items.map(function (i) {
+        return '<div class="vb" title="' + esc(i.label + ': ' + num(i.value) + unit) + '">' +
+          '<span class="n">' + (i.value ? num(i.value) : '') + '</span>' +
+          '<span class="c" style="height:' + (i.value / max * 100).toFixed(1) + '%"></span><span class="t">' + esc(i.short || i.label) + '</span></div>';
+      }).join('') + '</div>';
+    }
+
+    /* ---------- 탭: 현황 ---------- */
+    function tabOverview(el) {
+      var t = D.totals, m = D.meta;
+      var kp = function (l, v, unit, s, cls) { return '<div class="kpi glass ' + (cls || '') + '"><div class="l">' + l + '</div><div class="v"><span data-count="' + v + '">' + num(v) + '</span><small>' + unit + '</small></div><div class="s">' + s + '</div></div>'; };
+      var museums = m.museums.map(function (mm) {
+        var x = D.byMuseum[mm.id] || { people: 0, entries: 0, groups: 0 };
+        return { label: mm.short, value: x.people, extra: '입장 ' + x.entries + '건 · 그룹 ' + x.groups };
+      });
+      var regionSrc = REGION_MODE === 'unique' ? D.byRegionUnique : D.byRegionEntries;
+      var regions = Object.keys(regionSrc).map(function (k) { return { label: k, value: regionSrc[k] }; });
+      var ageSrc = REGION_MODE === 'unique' ? (D.byAgeUnique || {}) : (D.byAgeEntries || {});
+      var ages = (m.ageBands || []).map(function (a) { return { label: a, value: ageSrc[a] || 0 }; });
+      var dayList = daysBetween(m.start, m.end);
+      if (m.testMode) Object.keys(D.byDate).forEach(function (d) { if (dayList.indexOf(d) < 0) dayList.push(d); });
+      dayList.sort();
+      var days = dayList.map(function (d) {
+        var x = D.byDate[d]; return { label: md(d), value: x ? x.people : 0, extra: x ? '입장 ' + x.entries + '건' : '' };
+      });
+      var hours = [];
+      for (var h = 9; h <= 18; h++) hours.push({ label: h + '시', short: String(h), value: D.byHour[h] || 0 });
+
+      el.innerHTML =
+        '<div class="kpis">' +
+        kp('입장 인원 합계', t.people, '명', '입장 확인 ' + num(t.entries) + '건의 인원 합 (재방문 포함)', 'accent') +
+        kp('실방문 인원', t.uniquePeople, '명', '구매자별로 한 번에 가장 많이 들어온 인원의 합') +
+        kp('방문한 구매자', t.groups, '팀', '구매자 대비 ' + t.usageRate + '%') +
+        kp('판매 (유효 티켓)', t.soldTickets, '장', '주문 ' + num(t.orders) + '건 · 구매자 ' + num(t.buyerKeys) + '명') +
+        kp('확인 필요', t.dups + t.manual, '건', '중복 ' + t.dups + ' · 직원 수동 ' + t.manual) +
+        '</div>' +
+        '<div class="grid g2">' +
+        '<section class="glass panel"><h2>미술관별 입장 인원</h2><p class="desc">입장 확인 때 선택한 “함께 입장하는 인원”의 합계예요. 막대에 마우스를 올리면 건수·그룹 수가 보여요.</p>' + hbars(museums, '명') + '</section>' +
+        '<section class="glass panel"><h2>어느 지역에서 왔나요</h2>' +
+        '<div class="toggle" role="group"><button data-r="entries" aria-pressed="' + (REGION_MODE === 'entries') + '">입장 인원 합계</button><button data-r="unique" aria-pressed="' + (REGION_MODE === 'unique') + '">실방문 인원</button></div>' +
+        '<p class="desc" style="margin-top:-4px">' + (REGION_MODE === 'unique' ? '구매자별 첫 입장 때 고른 지역 × 한 번에 가장 많이 들어온 인원' : '모든 입장 확인 건의 인원 합 (재방문 포함)') + '</p>' + hbars(regions, '명') + '</section>' +
+        '<section class="glass panel"><h2>연령대별 방문 인원</h2><p class="desc">' + (REGION_MODE === 'unique' ? '구매자별로 한 번에 가장 많이 들어온 때의 연령 구성' : '모든 입장 확인 건의 연령대 인원 합 (재방문 포함)') + ' · 지역 카드의 보기 방식과 함께 바뀌어요</p>' + hbars(ages, '명') + '</section>' +
+        '<section class="glass panel"><h2>날짜별 입장 인원</h2><p class="desc">' + esc(md(m.start)) + ' ~ ' + esc(md(m.end)) + '</p>' + hbars(days, '명') + '</section>' +
+        '<section class="glass panel"><h2>시간대별 입장 인원</h2><p class="desc">9시 ~ 18시 (입장 확인 시각 기준)</p>' + vbars(hours, '명') + '</section>' +
+        '</div>' +
+        (m.testRecords ? '<div class="notice warn">' + (m.testMode ? '테스트 모드라서 테스트 기록 ' + m.testRecords + '건도 위 집계에 포함돼 있어요. 테스트 모드를 끄면 빠져요.' : '테스트 기록 ' + m.testRecords + '건은 위 집계에서 빠져 있어요.') + ' [기록·관리] 탭에서 지울 수 있어요.</div>' : '');
+      el.querySelectorAll('.toggle button').forEach(function (b) {
+        b.addEventListener('click', function () { REGION_MODE = b.getAttribute('data-r'); tabOverview(el); });
+      });
+      countUp(el);
+    }
+
+    /* ---------- 탭: 구매자 이력 ---------- */
+    function tabBuyers(el) {
+      var ms = D.meta.museums;
+      el.innerHTML = '<section class="glass panel"><h2>구매자별 방문 이력</h2>' +
+        '<p class="desc">입장 기록이 있는 구매자 ' + num(D.buyers.length) + '명. 성함·뒷자리로 찾을 수 있어요. <span class="tag amber">노란 줄</span>은 같은 명단 구매자에 서로 다른 성함이 입력된 경우예요.</p>' +
+        '<div class="row"><input type="search" id="q" placeholder="예) 홍길동, 2222"></div>' +
+        '<div class="tbl-wrap"><table><thead><tr><th>성함(실명)</th><th>뒷자리</th><th class="num">구매</th><th class="num">입장 횟수</th>' +
+        ms.map(function (m) { return '<th title="' + esc(m.name) + '">' + esc(m.short.replace('미술관', '')) + '</th>'; }).join('') +
+        '<th>첫 입장</th><th>마지막</th><th class="num">최대 인원</th><th>지역</th><th>명단이름(참고)</th></tr></thead><tbody id="tb"></tbody></table></div></section>';
+      var tb = el.querySelector('#tb'), q = el.querySelector('#q');
+      function draw() {
+        var s = q.value.trim().toLowerCase();
+        var list = D.buyers.filter(function (b) {
+          if (!s) return true;
+          return (b.maskedName + ' ' + b.last4 + ' ' + b.typedNames.join(' ')).toLowerCase().indexOf(s) >= 0;
+        });
+        tb.innerHTML = list.slice(0, 500).map(function (b) {
+          return '<tr class="' + (b.nameConflict ? 'hl' : '') + '"><td><b>' + esc(b.displayName) + '</b>' + (b.method === '수동' ? ' <span class="tag blue">수동</span>' : '') + '</td><td>' + esc(b.last4) + '</td>' +
+            '<td class="num">' + num(b.tickets) + '</td><td class="num">' + num(b.entries) + '</td>' +
+            ms.map(function (m) { var c = b.museums[m.id] || 0; return '<td title="' + c + '회"><span class="dot ' + (c ? '' : 'off') + '"></span>' + (c > 1 ? ' ' + c : '') + '</td>'; }).join('') +
+            '<td>' + esc(b.first.slice(5, 16)) + '</td><td>' + esc(b.last.slice(5, 16)) + '</td><td class="num">' + b.maxPeople + '</td><td>' + esc(b.region) + '</td>' +
+            '<td style="color:var(--muted)">' + esc(b.maskedName) + '</td></tr>';
+        }).join('') || '<tr><td colspan="20" class="empty">아직 입장 기록이 없어요.</td></tr>';
+      }
+      q.addEventListener('input', draw); draw();
+    }
+
+    /* ---------- 탭: 확인 필요 ---------- */
+    function tabCheck(el) {
+      var conflicts = D.merged.filter(function (x) { return x.nameConflict; });
+      var mergedOnly = D.merged.filter(function (x) { return !x.nameConflict; });
+      var recRow = function (r) {
+        return '<tr><td>' + esc(r.time.slice(5, 16)) + '</td><td>' + esc(r.museumName) + '</td><td><b>' + esc(r.typedName) + '</b></td><td>' + esc(r.last4) + '</td><td class="num">' + r.people + '</td><td>' + esc(r.region) + '</td><td>' + esc(r.prev || '') + '</td><td style="color:var(--muted)">' + esc(r.maskedName) + '</td></tr>';
+      };
+      var recHead = '<thead><tr><th>일시</th><th>미술관</th><th>성함(실명)</th><th>뒷자리</th><th class="num">인원</th><th>지역</th><th>직전 입장</th><th>명단이름(참고)</th></tr></thead>';
+      el.innerHTML =
+        '<section class="glass panel"><h2>다른 사람일 수 있는 구매자 <span class="tag red">' + conflicts.length + '</span></h2>' +
+        '<p class="desc">NOL 명단 이름이 가려져 있어(마스킹) 한 사람으로 합쳐졌는데, 실제 입력한 성함이 서로 다른 경우예요. (예: 김민정·김수정 → 김*정) 구매 매수가 두 사람 몫이 합쳐져 있을 수 있어요.</p>' +
+        mergedTable(conflicts, true) + '</section>' +
+        '<section class="glass panel"><h2>중복 입장 <span class="tag amber">' + D.dups.length + '</span></h2>' +
+        '<p class="desc">같은 구매자가 같은 미술관에서 짧은 시간 안에 다시 확인한 기록이에요. 기록은 남고 집계에도 들어가요. 캡처 화면 재사용이 의심되면 확인해 보세요.</p>' +
+        (D.dups.length ? '<div class="tbl-wrap"><table>' + recHead + '<tbody>' + D.dups.map(recRow).join('') + '</tbody></table></div>' : '<div class="empty">없어요.</div>') + '</section>' +
+        '<section class="glass panel"><h2>직원 수동 입장 <span class="tag blue">' + D.manual.length + '</span></h2>' +
+        '<p class="desc">명단에서 찾지 못해 직원 PIN으로 처리한 입장이에요. 다음 명단 업로드 후 실제 구매자인지 확인해 보세요.</p>' +
+        (D.manual.length ? '<div class="tbl-wrap"><table>' + recHead + '<tbody>' + D.manual.map(recRow).join('') + '</tbody></table></div>' : '<div class="empty">없어요.</div>') + '</section>' +
+        '<section class="glass panel"><h2>매수가 합산된 구매자 <span class="tag green">' + mergedOnly.length + '</span></h2>' +
+        '<p class="desc">주문이 여러 건이라 매수를 합친 구매자예요. 같은 사람이 여러 번 산 경우가 대부분이지만, 마스킹 결과가 같은 다른 사람일 수도 있어요.</p>' +
+        mergedTable(mergedOnly, false) + '</section>';
+    }
+    function mergedTable(list, showNames) {
+      if (!list.length) return '<div class="empty">없어요.</div>';
+      return '<div class="tbl-wrap" style="max-height:420px"><table><thead><tr><th>성함(실명)</th><th>명단이름(참고)</th><th>뒷자리</th><th class="num">총 매수</th><th class="num">주문 수</th><th>채널</th><th>입장</th><th>주문번호</th></tr></thead><tbody>' +
+        list.map(function (x) {
+          return '<tr class="' + (x.nameConflict ? 'hl' : '') + '"><td><b>' + esc(x.typedNames.join(', ') || '-') + '</b></td><td style="color:var(--muted)">' + esc(x.maskedName) + '</td><td>' + esc(x.last4) + '</td><td class="num">' + x.tickets + '</td><td class="num">' + x.orders.length + '</td><td>' + esc(x.channels.join(', ')) + '</td><td>' + (x.entered ? '<span class="tag green">입장함</span>' : '') + '</td>' +
+            '<td>' + esc(x.orders.join(', ')) + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }
+
+    /* ---------- 탭: 명단 업로드 ---------- */
+    var PENDING = null;
+    function tabUpload(el) {
+      el.innerHTML = '<section class="glass panel"><h2>NOL 구매내역 업로드</h2>' +
+        '<p class="desc">NOL 파트너 어드민 <b>구매내역조회 → 다운로드 요청</b>으로 받은 엑셀(.xlsx)을 그대로 올려 주세요. CSV도 됩니다.<br>' +
+        '상품명에 “장흥 미술관 여행 통합이용권”이 들어간 행 중 <b>사용가능·사용완료</b>만 명단에 들어가고, 업로드할 때마다 명단 전체가 새 파일로 바뀝니다. 입장 기록은 그대로 남아요.<br>' +
+        '구매자 이름에 <b>*</b>가 있으면 방문객 성함을 같은 규칙으로 가려서 대조하고, <b>*</b>가 없는 실명 명단이면 성함 전체로 정확히 대조해요.</p>' +
+        '<label class="drop" id="drop"><input type="file" id="file" accept=".xlsx,.xls,.csv" hidden><b>파일을 끌어다 놓거나 눌러서 선택</b><div style="font-size:13px;color:var(--muted);margin-top:4px">.xlsx / .csv</div></label>' +
+        '<div id="pv"></div></section>';
+      var drop = el.querySelector('#drop'), file = el.querySelector('#file'), pv = el.querySelector('#pv');
+      ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('on'); }); });
+      ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('on'); }); });
+      drop.addEventListener('drop', function (e) { if (e.dataTransfer.files[0]) handle(e.dataTransfer.files[0]); });
+      file.addEventListener('change', function () { if (file.files[0]) handle(file.files[0]); });
+
+      function handle(f) {
+        pv.innerHTML = '<div class="loading"><span class="spinner"></span>' + esc(f.name) + ' 읽는 중…</div>';
+        readTable(f).then(function (table) {
+          PENDING = { table: table, name: f.name };
+          return call('adminPreviewRoster', TOKEN, table);
+        }).then(function (r) { showPreview(r, false); })
+          .catch(function (e) { pv.innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
+      }
+      function showPreview(r, done) {
+        var s = r.stats;
+        var excl = Object.keys(s.excludedCounts).map(function (k) { return k + ' ' + s.excludedCounts[k]; }).join(', ') || '없음';
+        var ch = Object.keys(s.channels).map(function (k) { return k + ' ' + num(s.channels[k]) + '장'; }).join(' · ');
+        var val = Object.keys(s.validity).join(', ');
+        pv.innerHTML = (done ? '<div class="notice ok"><b>명단을 반영했어요.</b> 지금부터 이 명단으로 입장 확인을 합니다.</div>' : '<div class="notice info"><b>' + esc(PENDING.name) + '</b> 미리보기 — 아직 저장 전이에요.</div>') +
+          '<div class="stats">' +
+          '<div>전체 행<b>' + num(s.totalRows) + '</b></div>' +
+          '<div>장흥 상품 행<b>' + num(s.productRows) + '</b></div>' +
+          '<div>명단 반영 티켓<b>' + num(s.includedTickets) + '장</b></div>' +
+          '<div>주문<b>' + num(s.orders) + '건</b></div>' +
+          '<div>구매자 (이름+뒷자리)<b>' + num(s.keys) + '명</b></div>' +
+          '<div>대조 방식<b style="font-size:15px">마스킹 ' + num(s.maskedKeys) + ' · 실명 ' + num(s.realNameKeys) + '</b></div>' +
+          '<div>매수 합산 구매자<b>' + num(s.mergedKeys) + '명</b></div>' +
+          '<div>주문당 최대<b>' + s.maxPerOrder + '매</b></div>' +
+          '<div>이미 사용완료<b>' + num(s.usedTickets) + '장</b></div>' +
+          '</div>' +
+          '<div class="notice" style="background:var(--paper-2)">제외: ' + esc(excl) + ' · 다른 상품 행 ' + num(s.otherProductRows) + '<br>채널: ' + esc(ch) + '<br>유효기간: ' + esc(val || '-') + '</div>' +
+          (r.warnings.length ? '<div class="notice warn"><b>확인해 주세요</b><br>' + r.warnings.slice(0, 20).map(esc).join('<br>') + '</div>' : '') +
+          (done ? '' : '<div class="row" style="margin-top:14px"><button class="btn green" id="commit" style="width:auto;padding:0 28px">이 명단으로 교체</button><button class="btn ghost" id="cancel" style="width:auto;padding:0 20px">취소</button></div>');
+        if (done) return;
+        pv.querySelector('#cancel').addEventListener('click', function () { PENDING = null; pv.innerHTML = ''; });
+        var b = pv.querySelector('#commit');
+        b.addEventListener('click', function () {
+          b.disabled = true; b.innerHTML = '<span class="spinner"></span> 저장 중…';
+          call('adminCommitRoster', TOKEN, PENDING.table, PENDING.name).then(function (res) {
+            showPreview(res, true);
+            call('adminDashboard', TOKEN).then(function (d) { D = d; });
+          }).catch(function (e) { b.disabled = false; b.textContent = '이 명단으로 교체'; pv.insertAdjacentHTML('beforeend', '<div class="notice err">' + esc(errMsg(e)) + '</div>'); });
+        });
+      }
+    }
+    /** 파일 → 2차원 배열 (첫 시트, 1행 헤더) */
+    function readTable(f) {
+      return new Promise(function (resolve, reject) {
+        if (typeof XLSX === 'undefined') return reject(new Error('엑셀 읽기 도구를 불러오지 못했어요. 새로고침 해 주세요.'));
+        var isCsv = /\.csv$/i.test(f.name);
+        var fr = new FileReader();
+        fr.onerror = function () { reject(new Error('파일을 읽지 못했어요.')); };
+        fr.onload = function () {
+          try {
+            var wb = isCsv ? XLSX.read(fr.result, { type: 'string', raw: true }) : XLSX.read(new Uint8Array(fr.result), { type: 'array' });
+            var ws = wb.Sheets[wb.SheetNames[0]];
+            var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+            rows = rows.map(function (r) { return r.map(function (v) { return v instanceof Date ? v.toISOString() : v; }); });
+            resolve(rows);
+          } catch (e) { reject(new Error('파일 형식을 읽지 못했어요: ' + errMsg(e))); }
+        };
+        if (isCsv) fr.readAsText(f, 'utf-8'); else fr.readAsArrayBuffer(f);
+      });
+    }
+
+    /* ---------- 탭: NOL 사용처리 ---------- */
+    var NOL_MODE = 'actual';
+    var NOL_ORDER_HEAD = ['주문번호', '구매일', '성함(실명)', '명단이름(참고)', '뒷자리', '채널', '주문 매수', '구매자 총 매수',
+      '실제 입장 최대 인원', '사용처리할 핀', '사용처리 핀 수', '그중 새로 처리할 핀', '이미 사용완료 핀', '미입장 매수',
+      '첫 입장 일시', '첫 입장 미술관', '비고'];
+    var NOL_PIN_HEAD = ['핀번호', '상태', '주문번호', '성함(실명)', '명단이름(참고)', '뒷자리', '채널', '실제 입장 최대 인원', '첫 입장 일시', '첫 입장 미술관'];
+    function tabNol(el) {
+      var days = daysBetween(D.meta.start, D.meta.end);
+      el.innerHTML = '<section class="glass panel"><h2>NOL 사용처리용 목록</h2>' +
+        '<p class="desc">입장 확인이 된 구매자의 주문을 뽑아요. NOL 어드민 <b>핀 사용 처리</b> 메뉴에서 “사용처리할 핀”을 처리하면 방문 후 환불을 막을 수 있어요.<br>' +
+        '<b>실제 입장 인원 기준</b>: 구매자별로 한 번에 가장 많이 들어온 인원 수만큼만 핀을 배정해요. 주문이 여러 건이면 먼저 산 주문의 핀부터 채우고, 나머지는 <b>미입장 매수</b>로 남겨요. 테스트 기록과 명단에 없는 수동 입장은 빠져요.</p>' +
+        '<div class="row">' +
+        '<div class="toggle" role="group" style="margin:0"><button data-m="actual" aria-pressed="' + (NOL_MODE === 'actual') + '">실제 입장 인원 기준</button><button data-m="full" aria-pressed="' + (NOL_MODE === 'full') + '">주문 전체 핀</button></div>' +
+        '<select id="day"><option value="">전체 기간 (첫 입장 기준)</option>' + days.map(function (d) { return '<option value="' + d + '">' + md(d) + ' 첫 입장</option>'; }).join('') + '</select>' +
+        '<button class="btn small" id="get">목록 보기</button></div><div id="out"></div></section>';
+      var out = el.querySelector('#out');
+      el.querySelectorAll('[data-m]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          NOL_MODE = b.getAttribute('data-m');
+          el.querySelectorAll('[data-m]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+          if (out.innerHTML) el.querySelector('#get').click();
+        });
+      });
+      el.querySelector('#get').addEventListener('click', function () {
+        var day = el.querySelector('#day').value, mode = NOL_MODE;
+        out.innerHTML = '<div class="loading"><span class="spinner"></span>불러오는 중…</div>';
+        call('adminNolExport', TOKEN, day, mode).then(function (ex) {
+          var rows = ex.rows, sm = ex.summary;
+          out.innerHTML = (mode === 'full' ? '<div class="notice warn">“주문 전체 핀” 모드예요. 입장하지 않은 동반자 몫까지 모두 사용처리 대상에 들어가요.</div>' : '') +
+            '<div class="kpis" style="margin-top:14px">' +
+            '<div class="kpi glass"><div class="l">입장한 구매자</div><div class="v">' + num(sm.buyers) + '<small>명</small></div><div class="s">주문 ' + num(sm.orders) + '건</div></div>' +
+            '<div class="kpi glass"><div class="l">구매 매수</div><div class="v">' + num(sm.tickets) + '<small>장</small></div><div class="s">이 구매자들이 산 전체</div></div>' +
+            '<div class="kpi glass"><div class="l">실제 입장 최대 인원</div><div class="v">' + num(sm.maxPeople) + '<small>명</small></div><div class="s">구매자별 최대 인원의 합</div></div>' +
+            '<div class="kpi glass accent"><div class="l">사용처리할 핀</div><div class="v">' + num(sm.toUse) + '<small>개</small></div><div class="s">새로 처리 ' + num(sm.newPins) + ' · 이미 사용완료 ' + num(sm.alreadyUsed) + '</div></div>' +
+            '<div class="kpi glass"><div class="l">미입장 매수</div><div class="v">' + num(sm.notEntered) + '<small>장</small></div><div class="s">사용처리하지 않고 남김</div></div>' +
+            '</div>' +
+            '<div class="row"><button class="btn small" id="c1">주문 단위 CSV</button><button class="btn small" id="c2">핀 단위 CSV</button>' +
+            '<button class="btn small ghost" id="s1">시트 탭으로 (주문)</button><button class="btn small ghost" id="s2">시트 탭으로 (핀)</button></div><div id="sm"></div>' +
+            '<div class="tbl-wrap" style="max-height:560px"><table><thead><tr><th>성함(실명)</th><th>뒷자리</th><th>주문번호</th><th>구매일</th><th>채널</th>' +
+            '<th class="num">주문 매수</th><th class="num">구매자 총 매수</th><th class="num">실제 입장 최대 인원</th><th>사용처리할 핀</th><th class="num">미입장 매수</th><th>첫 입장</th><th>비고</th><th>명단이름(참고)</th></tr></thead><tbody>' +
+            (rows.map(function (r) {
+              var pins = r.pinsToUse.map(function (p) { return r.pinsAlreadyUsed.indexOf(p) >= 0 ? '<span class="tag" style="background:#EEEBE3;color:var(--muted)" title="이미 사용완료">' + esc(p) + '</span>' : '<span class="tag green">' + esc(p) + '</span>'; }).join(' ');
+              return '<tr class="' + (r.keyOrders > 1 ? 'hl' : '') + '"><td><b>' + esc(r.realName || '-') + '</b></td><td>' + esc(r.last4) + '</td><td>' + esc(r.orderNo) + '</td><td>' + esc(r.buyDate.slice(5)) + '</td><td>' + esc(r.channel) + '</td>' +
+                '<td class="num">' + r.orderTickets + '</td><td class="num">' + r.keyTickets + '</td><td class="num"><b>' + r.maxPeople + '</b></td>' +
+                '<td style="white-space:normal;min-width:200px">' + (pins || '<span style="color:var(--muted)">없음</span>') + '</td>' +
+                '<td class="num">' + (r.notEntered ? '<span class="tag amber">' + r.notEntered + '장</span>' : '0') + '</td>' +
+                '<td>' + esc(r.firstTime.slice(5, 16)) + '<br><span style="color:var(--muted);font-size:12px">' + esc(r.firstMuseum) + '</span></td>' +
+                '<td style="white-space:normal;min-width:200px">' + esc(r.note) + '</td><td style="color:var(--muted)">' + esc(r.rosterName) + '</td></tr>';
+            }).join('') || '<tr><td colspan="13" class="empty">해당하는 입장 기록이 없어요.</td></tr>') + '</tbody></table></div>' +
+            '<p class="desc" style="margin-top:10px"><span class="tag green">초록 핀</span> 새로 사용처리 · <span class="tag" style="background:#EEEBE3;color:var(--muted)">회색 핀</span> NOL에서 이미 사용완료(마지막 업로드 기준) · <span class="tag amber">노란 줄</span> 주문이 여러 건인 구매자</p>';
+          var tag = (mode === 'full' ? '주문전체_' : '입장인원_') + (day || '전체');
+          out.querySelector('#c1').addEventListener('click', function () {
+            downloadCsv('NOL사용처리_주문_' + tag + '.csv', NOL_ORDER_HEAD, rows.map(function (r) {
+              return [r.orderNo, r.buyDate, r.realName, r.rosterName, r.last4, r.channel, r.orderTickets, r.keyTickets, r.maxPeople,
+                r.pinsToUse.join(', '), r.toUseCount, r.pinsNew.join(', '), r.pinsAlreadyUsed.join(', '), r.notEntered, r.firstTime, r.firstMuseum, r.note];
+            }));
+          });
+          out.querySelector('#c2').addEventListener('click', function () {
+            downloadCsv('NOL사용처리_핀_' + tag + '.csv', NOL_PIN_HEAD, ex.pins.map(function (p) {
+              return [p.pin, p.state, p.orderNo, p.realName, p.rosterName, p.last4, p.channel, p.maxPeople, p.firstTime, p.firstMuseum];
+            }));
+          });
+          [['#s1', 'nol-order'], ['#s2', 'nol-pin']].forEach(function (x) {
+            var b = out.querySelector(x[0]);
+            b.addEventListener('click', function () {
+              b.disabled = true;
+              call('adminExportToSheet', TOKEN, x[1], day, mode).then(function (r) {
+                b.disabled = false;
+                out.querySelector('#sm').innerHTML = '<div class="notice ok">시트 탭 “' + esc(r.name) + '”을 만들었어요 (' + r.rows + '행). <a class="lnk" href="' + esc(r.url) + '" target="_blank">열기 ↗</a></div>';
+              }).catch(function (e) { b.disabled = false; out.querySelector('#sm').innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
+            });
+          });
+        }).catch(function (e) { out.innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
+      });
+    }
+
+    /* ---------- 탭: QR ---------- */
+    function tabQr(el) {
+      el.innerHTML = '<section class="glass panel"><h2>미술관별 QR</h2><p class="desc">웹앱 주소로 미술관 4곳의 QR을 만들어요. <b>안내판 PNG</b>는 A5 비율(300dpi) 인쇄용, <b>QR만 PNG</b>는 디자이너가 포스터에 넣을 때 쓰세요. 이미지를 길게 누르거나 우클릭해서 저장해도 됩니다.<br>' +
+        '<b>인쇄 전에 각 QR을 휴대폰으로 찍어서 해당 미술관 이름이 뜨는지 꼭 확인</b>해 주세요.</p><div id="qq" class="loading"><span class="spinner"></span>만드는 중…</div></section>';
+      var box = el.querySelector('#qq');
+      call('adminQrInfo', TOKEN).then(function (info) {
+        if (!info.base) { box.className = ''; box.innerHTML = '<div class="notice err">웹앱 주소를 찾지 못했어요. 배포 후 다시 열거나, 설정 시트의 “QR주소”에 배포 URL(/exec)을 넣어 주세요.</div>'; return; }
+        if (/\/dev(\?|$)/.test(info.base)) box.insertAdjacentHTML('beforebegin', '<div class="notice err">지금 주소가 테스트용(/dev)이에요. 방문객은 열 수 없으니 배포 URL(/exec)로 다시 열어 주세요.</div>');
+        if (typeof QRious === 'undefined') { box.className = ''; box.innerHTML = '<div class="notice err">QR 도구를 불러오지 못했어요. 새로고침 해 주세요.</div>'; return; }
+        var glyphs = '장흥미술관여행통합이용권입장확인휴대폰카메라로QR을찍어주세요성함뒷자리력인원지역선택직에게화면보여기→·' + info.eventName + info.museums.map(function (m) { return m.name; }).join('');
+        return fontsReady(glyphs).then(function () {
+          box.className = 'qrs';
+          box.innerHTML = info.museums.map(function (m) {
+            var url = info.base + (info.base.indexOf('?') >= 0 ? '&' : '?') + 'm=' + m.id;
+            var sign = makeSign(m, url, info.eventName), only = makeQrOnly(url);
+            return '<div class="qrc"><h3>' + esc(m.name) + '</h3><img src="' + sign + '" alt="' + esc(m.name) + ' 안내판 QR">' +
+              '<div class="u">' + esc(url) + '</div><div class="acts">' +
+              '<a class="btn small" download="QR안내판_' + esc(m.short) + '.png" href="' + sign + '">안내판 PNG</a>' +
+              '<a class="btn small green" style="box-shadow:0 3px 0 var(--green-d)" download="QR_' + esc(m.short) + '.png" href="' + only + '">QR만 PNG</a>' +
+              '<a class="btn small ghost" href="' + esc(url) + '" target="_blank">열어보기</a></div></div>';
+          }).join('');
+        });
+      }).catch(function (e) { box.className = ''; box.innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
+    }
+    function fontsReady(text) {
+      if (!document.fonts || !document.fonts.load) return Promise.resolve();
+      // 구글 폰트는 글자 범위별로 나뉘어 있어서, 캔버스에 쓸 글자를 미리 지정해 불러와야 함
+      return Promise.all([document.fonts.load('100px Jua', text), document.fonts.load('700 40px Pretendard', text), document.fonts.load('800 40px Pretendard', text)])
+        .catch(function () {}).then(function () { return document.fonts.ready; });
+    }
+    function qrCanvas(url, size) {
+      var q = new QRious({ value: url, size: size, level: 'H', padding: 0, background: '#ffffff', foreground: '#1F2124' });
+      return q.canvas || q.image;
+    }
+    function makeQrOnly(url) {
+      var S = 1200, pad = 80;
+      var c = document.createElement('canvas'); c.width = S; c.height = S;
+      var x = c.getContext('2d');
+      x.fillStyle = '#fff'; x.fillRect(0, 0, S, S);
+      x.imageSmoothingEnabled = false;
+      x.drawImage(qrCanvas(url, S - pad * 2), pad, pad, S - pad * 2, S - pad * 2);
+      return c.toDataURL('image/png');
+    }
+    function makeSign(m, url, eventName) {
+      var W = 1748, H = 2480;
+      var c = document.createElement('canvas'); c.width = W; c.height = H;
+      var x = c.getContext('2d');
+      x.fillStyle = '#F4F1EA'; x.fillRect(0, 0, W, H);
+      x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+
+      // 스티커: 별·육각형·잎
+      star(x, 1520, 300, 95, '#F5E04A', 0.2);
+      hexagon(x, 150, 2330, 60, '#A9B79A');
+      leaf(x, 210, 330);
+      star(x, 1530, 2150, 60, '#F5E04A', -0.3);
+
+      // 상단 알약
+      x.font = '800 54px Pretendard';
+      var kick = '통합이용권 입장 확인';
+      var kw = x.measureText(kick).width + 80;
+      round(x, (W - kw) / 2, 150, kw, 92, 46, '#ffffff');
+      x.fillStyle = '#4A4D52'; x.fillText(kick, W / 2, 214);
+
+      // 제목
+      x.font = '210px Jua'; x.lineJoin = 'round';
+      outlined(x, '장흥', W / 2, 470, '#4BB27A', 28);
+      outlined(x, '미술관여행', W / 2, 690, '#4A66B4', 28);
+
+      // 미술관 라벨 (살짝 기울인 종이 + 테이프)
+      x.save(); x.translate(W / 2, 880); x.rotate(-0.02);
+      x.font = '120px Jua';
+      var lw = Math.min(W - 200, x.measureText(m.name).width + 180);
+      x.shadowColor = 'rgba(60,50,20,.18)'; x.shadowBlur = 30; x.shadowOffsetY = 10;
+      round(x, -lw / 2, -110, lw, 210, 14, '#ffffff');
+      x.shadowColor = 'transparent';
+      x.fillStyle = 'rgba(245,224,74,.75)'; x.fillRect(-90, -135, 180, 50);
+      x.fillStyle = '#4A66B4'; fitText(x, m.name, 0, 40, lw - 100, 120, 'Jua', '');
+      x.restore();
+
+      // QR 카드
+      var qs = 1040, card = qs + 120, cx = (W - card) / 2, cy = 1060;
+      x.shadowColor = 'rgba(60,50,20,.2)'; x.shadowBlur = 40; x.shadowOffsetY = 14;
+      round(x, cx, cy, card, card, 36, '#ffffff');
+      x.shadowColor = 'transparent';
+      x.imageSmoothingEnabled = false;
+      x.drawImage(qrCanvas(url, qs), cx + 60, cy + 60, qs, qs);
+
+      // 안내
+      x.fillStyle = '#1F2124'; x.font = '800 78px Pretendard';
+      x.fillText('휴대폰 카메라로 QR을 찍어 주세요', W / 2, 2370 - 70);
+      x.font = '700 46px Pretendard'; x.fillStyle = '#4A4D52';
+      x.fillText('성함·휴대폰 뒷자리 입력 → 인원·지역 선택 → 직원에게 화면 보여주기', W / 2, 2385);
+      return c.toDataURL('image/png');
+    }
+    function round(x, l, t, w, h, r, fill) {
+      x.beginPath(); x.moveTo(l + r, t); x.arcTo(l + w, t, l + w, t + h, r); x.arcTo(l + w, t + h, l, t + h, r);
+      x.arcTo(l, t + h, l, t, r); x.arcTo(l, t, l + w, t, r); x.closePath(); x.fillStyle = fill; x.fill();
+    }
+    function outlined(x, text, cx, y, color, stroke) {
+      x.strokeStyle = '#ffffff'; x.lineWidth = stroke; x.strokeText(text, cx, y);
+      x.fillStyle = color; x.fillText(text, cx, y);
+    }
+    function fitText(x, text, cx, y, maxW, size, family, weight) {
+      var s = size;
+      do { x.font = (weight ? weight + ' ' : '') + s + 'px ' + family; s -= 4; } while (x.measureText(text).width > maxW && s > 40);
+      x.fillText(text, cx, y);
+    }
+    function star(x, cx, cy, r, color, rot) {
+      x.save(); x.translate(cx, cy); x.rotate(rot); x.beginPath();
+      for (var i = 0; i < 16; i++) { var a = i * Math.PI / 8, rr = i % 2 ? r * 0.42 : r; x.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+      x.closePath(); x.fillStyle = color; x.fill(); x.restore();
+    }
+    function hexagon(x, cx, cy, r, color) {
+      x.save(); x.translate(cx, cy); x.beginPath();
+      for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3; x.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+      x.closePath(); x.lineWidth = 26; x.strokeStyle = color; x.stroke(); x.restore();
+    }
+    function leaf(x, cx, cy) {
+      x.save(); x.translate(cx, cy); x.rotate(-0.6);
+      x.strokeStyle = '#A8C64F'; x.lineWidth = 10; x.lineCap = 'round';
+      x.beginPath(); x.moveTo(-120, 0); x.lineTo(130, 0); x.stroke();
+      x.fillStyle = '#BFD96A';
+      for (var i = -2; i <= 2; i++) {
+        [-1, 1].forEach(function (s) {
+          x.save(); x.translate(i * 48, 0); x.rotate(s * -0.9); x.beginPath(); x.ellipse(0, s * 34, 16, 36, 0, 0, Math.PI * 2); x.fill(); x.restore();
+        });
+      }
+      x.restore();
+    }
+
+    /* ---------- 탭: 기록·관리 ---------- */
+    function tabManage(el) {
+      var m = D.meta;
+      el.innerHTML = '<div class="grid g2">' +
+        '<section class="glass panel"><h2>입장 기록 내려받기</h2><p class="desc">모든 입장 기록(테스트 포함)을 CSV로 받아요. 스프레드시트의 “입장기록” 시트와 같은 내용이에요.</p><button class="btn small" id="dl">전체 기록 CSV</button><div id="dlm"></div></section>' +
+        '<section class="glass panel"><h2>테스트 기록 지우기</h2><p class="desc">테스트 모드에서 남긴 기록 <b>' + m.testRecords + '건</b>을 지워요. 운영 시작 전에 정리해 주세요.</p><button class="btn small" id="del" style="background:var(--red);box-shadow:0 3px 0 #a12d33"' + (m.testRecords ? '' : ' disabled') + '>테스트 기록 삭제</button><div id="delm"></div></section>' +
+        '<section class="glass panel"><h2>운영 설정</h2><p class="desc">설정은 스프레드시트의 <b>“설정” 시트</b>에서 바꿔요. 바꾼 내용은 1분 안에 반영돼요.</p>' +
+        '<div class="notice" style="background:var(--paper-2)">이용 기간: ' + esc(m.start) + ' ~ ' + esc(m.end) + '<br>테스트 모드: ' + (m.testMode ? 'ON' : 'OFF') + '<br>지역 선택지: ' + esc(m.regions.join(' / ')) + '</div>' +
+        '<a class="lnk" href="' + esc(m.sheetUrl) + '" target="_blank">스프레드시트 열기 ↗</a></section>' +
+        '<section class="glass panel"><h2>방문객 화면 바로가기</h2><p class="desc">QR과 같은 주소예요. 테스트할 때 쓰세요.</p><div class="stack" style="display:grid;gap:8px">' +
+        m.museums.map(function (mm) { return '<a class="lnk" target="_blank" href="' + esc(BOOT.base + '?m=' + mm.id) + '">' + esc(mm.name) + ' ↗</a>'; }).join('') + '</div></section>' +
+        '</div>';
+      el.querySelector('#dl').addEventListener('click', function () {
+        var b = this; b.disabled = true;
+        call('adminRecords', TOKEN).then(function (rs) {
+          b.disabled = false;
+          downloadCsv('입장기록_' + m.now.slice(0, 10) + '.csv',
+            ['입장ID', '일시', '미술관', '성함(실명)', '뒷자리', '입장인원', '지역', '구매매수', '확인방식', '중복', '테스트', '직전입장', '명단이름(참고)'].concat((m.ageBands || []).map(function (a) { return '연령_' + a; })),
+            rs.map(function (r) { return [r.id, r.time, r.museumName, r.typedName, r.last4, r.people, r.region, r.tickets, r.method, r.dup ? 'Y' : '', r.test ? 'Y' : '', r.prev, r.maskedName].concat(r.ages || (m.ageBands || []).map(function () { return ''; })); }));
+        }).catch(function (e) { b.disabled = false; el.querySelector('#dlm').innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
+      });
+      el.querySelector('#del').addEventListener('click', function () {
+        var b = this;
+        if (b.getAttribute('data-sure') !== '1') { b.setAttribute('data-sure', '1'); b.textContent = '한 번 더 누르면 삭제'; return; }
+        b.disabled = true;
+        call('adminDeleteTestRecords', TOKEN).then(function (n) {
+          el.querySelector('#delm').innerHTML = '<div class="notice ok">' + n + '건을 지웠어요.</div>'; load();
+        }).catch(function (e) { b.disabled = false; el.querySelector('#delm').innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
+      });
+    }
+
+    if (TOKEN) load(); else renderLogin();
+  })();
+  </script>
+</body>
+</html>
