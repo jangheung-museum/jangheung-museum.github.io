@@ -930,7 +930,7 @@
         '<p class="desc">NOL 파트너 어드민에 로그인된 PC 브라우저에서 쓰는 버튼이에요. 아래 초록 버튼을 <b>즐겨찾기(북마크) 막대로 끌어다 놓으면</b> 설치돼요. 그다음 NOL 어드민 <b>주문관리 화면</b>에서 즐겨찾기의 버튼을 누르면 바로 명단이 업데이트돼요. 업데이트에는 30초 정도 걸려요. 매시간 자동 업데이트와 별개로, 급할 때 쓰세요.</p>' +
         '<div id="bmx" class="loading"><span class="spinner"></span>준비 중…</div>' +
         '<p class="desc" style="margin-top:10px">즐겨찾기 막대가 안 보이면 Ctrl+Shift+B(맥은 ⌘+Shift+B)를 누르세요. 끌어다 놓기가 안 되면 [코드 복사]를 눌러 새 즐겨찾기의 주소(URL) 칸에 붙여넣으세요. <b>이 버튼에는 업로드 비밀 키가 들어 있어요. 운영자 PC에만 설치하세요.</b></p></section>' +
-        '<section class="glass panel" style="margin-bottom:14px"><h2>명단 업데이트 기록</h2><p class="desc">${AUTO_TXT}. 급할 때는 위 북마크 버튼으로 바로 업데이트할 수 있어요. 최근 10회까지 보여요.</p>' +
+        '<section class="glass panel" style="margin-bottom:14px"><h2>명단 업데이트 기록</h2><p class="desc">자동 업데이트: 10/30(금)~11/8(일) 매일 9시~18시 매시 정각. 급할 때는 위 북마크 버튼으로 바로 업데이트할 수 있어요. 최근 10회까지 보여요.</p>' +
           ((m.uploads || []).length ? '<div class="tbl-wrap"><table><thead><tr><th>업데이트 시각</th><th class="num">유효 티켓</th><th>방식</th></tr></thead><tbody>' + m.uploads.map(function (u) { return '<tr><td>' + esc(u.at) + '</td><td class="num">' + num(u.tickets) + '</td><td style="color:var(--muted)">' + esc(u.name) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="empty">아직 업데이트 기록이 없어요.</div>') + '</section>' +
         '<div class="grid g2">' +
         '<section class="glass panel"><h2>입장 기록 내려받기</h2><p class="desc">모든 입장 기록(테스트 포함)을 CSV로 받아요. 스프레드시트의 “입장기록” 시트와 같은 내용이에요.</p><button class="btn small" id="dl">전체 기록 CSV</button><div id="dlm"></div></section>' +
