@@ -891,9 +891,29 @@
     }
 
     /* ---------- 탭: 기록·관리 ---------- */
+    function buildUpdater(api, key) {
+      var src = "(async()=>{var API=" + JSON.stringify(api) + ",KEY=" + JSON.stringify(key) + ";" +
+        "if(location.hostname!=='ps.yanolja.com'){if(confirm('NOL 파트너 어드민 주문관리 화면(ps.yanolja.com)에서 눌러 주세요. 지금 이동할까요?'))location.href='https://ps.yanolja.com/';return;}" +
+        "var b=document.createElement('div');b.style.cssText='position:fixed;z-index:2147483647;right:20px;top:20px;padding:16px 20px;background:#1F7A4A;color:#fff;font:700 15px/1.5 sans-serif;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);max-width:380px;white-space:pre-line';b.textContent='장흥 명단 업데이트 중… (30초 정도 걸려요)';b.title='누르면 닫혀요';b.style.cursor='pointer';b.onclick=function(){b.remove()};document.body.appendChild(b);" +
+        "try{var d=new Date(Date.now()+324e5).toISOString().slice(0,10);" +
+        "var r=await fetch('/api/order/history/list?channelNm=&cmd=excel&couponCd=&customCell=&customNm=&itemNm=&orderStateNm=&pageIndex=1&pageUnit=5000&searchDateType=buy&searchEDate='+d+'&searchSDate=2026-09-01&shopNm=',{credentials:'include'});" +
+        "var j=await r.json();if(!j||!Array.isArray(j.data))throw new Error('NOL 목록을 받지 못했어요. 다시 로그인한 뒤 눌러 주세요.');" +
+        "var H=['채널','상태','쿠폰번호','주문번호','구매자','연락번호','구매일','판매상품명','핀','유효기간(부터)','유효기간(까지)','예약자','예약자연락번호','수정일'];" +
+        "var T=[H].concat(j.data.map(function(i){return[i.channelNm,i.orderStateNm,i.couponCd,i.pin,i.customNm,i.customCell,i.buyDate,i.prodNm,i.pin,i.expirySdate,i.expiryEdate,i.userNm,i.userCell,i.updateDate].map(function(v){return v==null?'':String(v)})}));" +
+        "var u=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:'rosterUpload',args:[KEY,T,'NOL 수동 업데이트(북마크) '+new Date().toLocaleString('ko-KR')]})});" +
+        "var x=await u.json();if(!x.ok)throw new Error(x.error);var s=x.result.stats,e=s.excludedCounts||{},c=0;for(var k in e)c+=e[k];" +
+        "b.textContent='✓ 장흥 명단 업데이트 완료\\n유효 '+s.includedTickets.toLocaleString()+'장 · 주문 '+s.orders.toLocaleString()+'건 · 구매자 '+s.keys.toLocaleString()+'명\\n취소·환불 '+c+'장';" +
+        "}catch(err){b.style.background='#C9353D';b.textContent='✕ 장흥 명단 업데이트 실패\\n'+err.message;}b.textContent+='\\n(누르면 닫혀요)';setTimeout(function(){b.remove()},60000);})();";
+      return 'javascript:' + encodeURIComponent(src);
+    }
+
     function tabManage(el) {
       var m = D.meta;
-      el.innerHTML = '<div class="grid g2">' +
+      el.innerHTML = '<section class="glass panel" style="margin-bottom:14px"><h2>명단 업데이트 버튼 설치</h2>' +
+        '<p class="desc">NOL 파트너 어드민에 로그인된 PC 브라우저에서 쓰는 버튼이에요. 아래 초록 버튼을 <b>즐겨찾기(북마크) 막대로 끌어다 놓으면</b> 설치돼요. 그다음 NOL 어드민 <b>주문관리 화면</b>에서 즐겨찾기의 버튼을 누르면 바로 명단이 업데이트돼요. 업데이트에는 30초 정도 걸려요. 매시간 자동 업데이트와 별개로, 급할 때 쓰세요.</p>' +
+        '<div id="bmx" class="loading"><span class="spinner"></span>준비 중…</div>' +
+        '<p class="desc" style="margin-top:10px">즐겨찾기 막대가 안 보이면 Ctrl+Shift+B(맥은 ⌘+Shift+B)를 누르세요. 끌어다 놓기가 안 되면 [코드 복사]를 눌러 새 즐겨찾기의 주소(URL) 칸에 붙여넣으세요. <b>이 버튼에는 업로드 비밀 키가 들어 있어요. 운영자 PC에만 설치하세요.</b></p></section>' +
+        '<div class="grid g2">' +
         '<section class="glass panel"><h2>입장 기록 내려받기</h2><p class="desc">모든 입장 기록(테스트 포함)을 CSV로 받아요. 스프레드시트의 “입장기록” 시트와 같은 내용이에요.</p><button class="btn small" id="dl">전체 기록 CSV</button><div id="dlm"></div></section>' +
         '<section class="glass panel"><h2>테스트 기록 지우기</h2><p class="desc">테스트 모드에서 남긴 기록 <b>' + m.testRecords + '건</b>을 지워요. 운영 시작 전에 정리해 주세요.</p><button class="btn small" id="del" style="background:var(--red);box-shadow:0 3px 0 #a12d33"' + (m.testRecords ? '' : ' disabled') + '>테스트 기록 삭제</button><div id="delm"></div></section>' +
         '<section class="glass panel"><h2>운영 설정</h2><p class="desc">설정은 스프레드시트의 <b>“설정” 시트</b>에서 바꿔요. 바꾼 내용은 1분 안에 반영돼요.</p>' +
@@ -902,6 +922,21 @@
         '<section class="glass panel"><h2>방문객 화면 바로가기</h2><p class="desc">QR과 같은 주소예요. 테스트할 때 쓰세요.</p><div class="stack" style="display:grid;gap:8px">' +
         m.museums.map(function (mm) { return '<a class="lnk" target="_blank" href="' + esc(BOOT.base + '?m=' + mm.id) + '">' + esc(mm.name) + ' ↗</a>'; }).join('') + '</div></section>' +
         '</div>';
+      var bmx = el.querySelector('#bmx');
+      call('adminUpdaterInfo', TOKEN).then(function (info) {
+        var href = buildUpdater(info.api, info.key);
+        bmx.className = '';
+        bmx.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
+          '<a class="btn green" id="bmlink" style="box-shadow:0 3px 0 var(--green-d);cursor:grab;width:auto;display:inline-flex;align-items:center;padding:0 26px" title="즐겨찾기 막대로 끌어다 놓으세요">장흥 명단 업데이트</a>' +
+          '<button class="btn small ghost" id="bmcopy" style="width:auto">코드 복사</button><span id="bmmsg" style="color:var(--muted);font-weight:700"></span></div>';
+        var a = bmx.querySelector('#bmlink'); a.setAttribute('href', href);
+        a.addEventListener('click', function (e) { e.preventDefault(); bmx.querySelector('#bmmsg').textContent = '여기서 누르지 말고 즐겨찾기 막대로 끌어다 놓으세요.'; });
+        bmx.querySelector('#bmcopy').addEventListener('click', function () {
+          var done = function () { bmx.querySelector('#bmmsg').textContent = '복사했어요. 새 즐겨찾기의 주소 칸에 붙여넣으세요.'; };
+          if (navigator.clipboard) navigator.clipboard.writeText(href).then(done, function () { window.prompt('아래 코드를 복사하세요', href); });
+          else window.prompt('아래 코드를 복사하세요', href);
+        });
+      }).catch(function (e) { bmx.className = ''; bmx.innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
       el.querySelector('#dl').addEventListener('click', function () {
         var b = this; b.disabled = true;
         call('adminRecords', TOKEN).then(function (rs) {
