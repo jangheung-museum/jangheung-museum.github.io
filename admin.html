@@ -451,7 +451,127 @@
     }
 
     /* ---------- 탭: 현황 ---------- */
+    function updBarHtml() {
+      var m = D.meta;
+      var ups = m.uploads || [], lastU = ups[0];
+      var nextU = (function () {
+        var now = Date.now(), start = Date.parse('2026-10-30T09:00:00+09:00'), end = Date.parse('2026-11-08T18:00:00+09:00');
+        if (now >= end) return '';
+        if (now < start) return '10/30 09:00';
+        var k = new Date(Math.floor((now + 9 * 3600e3) / 3600e3) * 3600e3 + 3600e3); // 다음 정각 (KST)
+        var h = k.getUTCHours();
+        if (h < 9) k = new Date(k.getTime() + (9 - h) * 3600e3);
+        else if (h > 18) k = new Date(k.getTime() + (24 - h + 9) * 3600e3);
+        if (k.getTime() - 9 * 3600e3 > end) return '';
+        var hh = k.getUTCHours();
+        return (k.getUTCMonth() + 1) + '/' + k.getUTCDate() + ' ' + (hh < 10 ? '0' : '') + hh + ':00';
+      })();
+      return '<div class="notice" style="background:var(--paper-2);margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:14.5px">' +
+          '<span><b>명단 최근 업데이트</b> ' + (lastU ? esc(lastU.at.slice(5).replace('-', '/')) + ' · 유효 ' + num(lastU.tickets) + '장 <span style="color:var(--muted)">(' + esc(lastU.name) + ')</span>' : '아직 없음') + '</span>' +
+          '<span style="color:var(--ink-2)">자동 업데이트: 10/30(금)~11/8(일) 매일 9시~18시 매시 정각' + (nextU ? ' · 다음 예정 ' + esc(nextU) : '') + '</span>'  + '</div>';
+    }
+
+    var DAY_SEL = '';
+    function overviewDays() {
+      var m = D.meta, list = daysBetween(m.start, m.end);
+      if (m.testMode) Object.keys(D.byDate).forEach(function (d) { if (list.indexOf(d) < 0) list.push(d); });
+      return list.sort();
+    }
+    function dayTabsHtml() {
+      return '<div class="daytabs" style="display:flex;gap:6px;overflow-x:auto;padding:2px 2px 12px;scrollbar-width:thin">' +
+        [''].concat(overviewDays()).map(function (d) {
+          var x = d ? D.byDate[d] : null, sel = DAY_SEL === d;
+          return '<button data-day="' + d + '" style="flex:none;border:0;border-radius:999px;padding:8px 14px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;' +
+            (sel ? 'background:#1F7A4A;color:#fff;box-shadow:0 3px 0 #145533' : 'background:#fff;color:var(--ink-2);box-shadow:inset 0 0 0 1.5px var(--line)') + '">' +
+            (d ? esc(md(d)) + ' <small style="opacity:.8;font-weight:700">' + (x ? num(x.people) + '명' : '-') + '</small>' : '전체 기간') + '</button>';
+        }).join('') + '</div>';
+    }
+    function bindDayTabs(el) {
+      el.querySelectorAll('.daytabs button').forEach(function (b) {
+        b.addEventListener('click', function () { DAY_SEL = b.getAttribute('data-day'); tabOverview(el); });
+      });
+      var wrap = el.querySelector('.daytabs'), cur = el.querySelector('.daytabs button[data-day="' + DAY_SEL + '"]');
+      if (wrap && cur) wrap.scrollLeft = Math.max(0, cur.offsetLeft - wrap.clientWidth / 2 + cur.clientWidth / 2);
+    }
+    function ageText(ages) {
+      var bands = D.meta.ageBands || [];
+      return (ages || []).map(function (n, i) { return n ? String(bands[i] || '').replace(/\(.*\)/, '') + ' ' + n : ''; }).filter(Boolean).join(' · ');
+    }
+    function tabDay(el) {
+      var m = D.meta, d = DAY_SEL;
+      el.innerHTML = updBarHtml() + dayTabsHtml() + '<div id="dayx" class="loading"><span class="spinner"></span>그날 내역을 불러오는 중…</div>';
+      bindDayTabs(el);
+      var box = el.querySelector('#dayx');
+      var kp = function (l, v, unit, s, cls) { return '<div class="kpi glass ' + (cls || '') + '"><div class="l">' + l + '</div><div class="v"><span data-count="' + v + '">' + num(v) + '</span><small>' + unit + '</small></div><div class="s">' + s + '</div></div>'; };
+      function go(recs) {
+        var useRec = function (r) { return m.testMode || !r.test; };
+        var firstAt = {};
+        recs.forEach(function (r) { if (!useRec(r)) return; if (!firstAt[r.key] || r.time < firstAt[r.key]) firstAt[r.key] = r.time; });
+        var rs = recs.filter(function (r) { return r.date === d && useRec(r); }).sort(function (a, b) { return a.time < b.time ? -1 : a.time > b.time ? 1 : 0; });
+        var people = 0, groups = {}, newG = 0, byM = {}, byMe = {}, byH = {}, byR = {}, byA = {}, manual = 0, re = 0;
+        rs.forEach(function (r) {
+          people += r.people;
+          if (!groups[r.key]) { groups[r.key] = true; if (String(firstAt[r.key] || '').slice(0, 10) === d) newG++; }
+          byM[r.museumId] = (byM[r.museumId] || 0) + r.people; byMe[r.museumId] = (byMe[r.museumId] || 0) + 1;
+          byH[r.hour] = (byH[r.hour] || 0) + r.people;
+          byR[r.region] = (byR[r.region] || 0) + r.people;
+          (r.ages || []).forEach(function (n, i) { var a = (m.ageBands || [])[i]; if (a) byA[a] = (byA[a] || 0) + n; });
+          if (r.method === '수동') manual++; if (r.dup) re++;
+        });
+        var nG = Object.keys(groups).length;
+        var museums = m.museums.map(function (mm) { return { label: mm.short, value: byM[mm.id] || 0, extra: '입장 ' + (byMe[mm.id] || 0) + '건' }; });
+        var hours = []; for (var h = 9; h <= 18; h++) hours.push({ label: h + '시', short: String(h), value: byH[h] || 0 });
+        var regions = Object.keys(byR).map(function (k) { return { label: k, value: byR[k] }; }).sort(function (a, b) { return b.value - a.value; });
+        var ages = (m.ageBands || []).map(function (a) { return { label: a, value: byA[a] || 0 }; });
+        box.className = '';
+        if (!rs.length) { box.innerHTML = '<section class="glass panel"><h2>' + esc(md(d)) + ' 내역</h2><div class="empty">이날 입장 기록이 없어요.</div></section>'; return; }
+        box.innerHTML =
+          '<div class="kpis">' +
+          kp(esc(md(d)) + ' 입장 인원', people, '명', '입장 확인 ' + num(rs.length) + '건의 인원 합', 'accent') +
+          kp('입장 확인', rs.length, '건', '재입장 ' + re + '건 · 직원 수동 ' + manual + '건') +
+          kp('방문 팀', nG, '팀', '이날 1곳 이상 입장한 구매자') +
+          kp('첫 방문 팀', newG, '팀', '이날 처음 입장한 구매자') +
+          '</div>' +
+          '<div class="grid g2">' +
+          '<section class="glass panel"><h2>미술관별 입장 인원</h2>' + hbars(museums, '명') + '</section>' +
+          '<section class="glass panel"><h2>시간대별 입장 인원</h2>' + vbars(hours, '명') + '</section>' +
+          '<section class="glass panel"><h2>어느 지역에서 왔나요</h2><p class="desc">이날 입장 인원 합 기준</p>' + hbars(regions, '명') + '</section>' +
+          '<section class="glass panel"><h2>연령대별 입장 인원</h2><p class="desc">이날 입장 인원 합 기준</p>' + hbars(ages, '명') + '</section>' +
+          '</div>' +
+          '<section class="glass panel" style="margin-top:14px"><h2>' + esc(md(d)) + ' 입장 내역 <span class="tag blue">' + num(rs.length) + '건</span></h2>' +
+          '<div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="search" id="dq" placeholder="성함·뒷자리·지역 검색" style="flex:1;min-width:200px">' +
+          '<select id="dm" class="input" style="width:auto"><option value="">전체 미술관</option>' + m.museums.map(function (mm) { return '<option value="' + esc(mm.id) + '">' + esc(mm.short) + '</option>'; }).join('') + '</select>' +
+          '<select id="ds" class="input" style="width:auto"><option value="asc">시간 빠른순</option><option value="desc">시간 최근순</option></select><span id="dn" style="color:var(--muted);font-weight:700"></span></div>' +
+          '<div class="tbl-wrap"><table><thead><tr><th>시각</th><th>미술관</th><th>성함</th><th>뒷자리</th><th class="num">인원</th><th>연령</th><th>지역</th><th>비고</th></tr></thead><tbody id="dtb"></tbody></table></div></section>';
+        var q = box.querySelector('#dq'), dm = box.querySelector('#dm'), ds = box.querySelector('#ds'), tb = box.querySelector('#dtb'), dn = box.querySelector('#dn');
+        var mShort = {}; m.museums.forEach(function (mm) { mShort[mm.id] = mm.short; });
+        function draw() {
+          var s = q.value.trim().toLowerCase();
+          var list = rs.filter(function (r) {
+            if (dm.value && r.museumId !== dm.value) return false;
+            return !s || (r.typedName + ' ' + r.maskedName + ' ' + r.last4 + ' ' + r.region).toLowerCase().indexOf(s) >= 0;
+          });
+          if (ds.value === 'desc') list = list.slice().reverse();
+          dn.textContent = num(list.length) + '건 · ' + num(list.reduce(function (a, r) { return a + r.people; }, 0)) + '명';
+          tb.innerHTML = list.map(function (r) {
+            var tags = [];
+            if (r.dup) tags.push('<span class="tag blue">재입장</span>');
+            if (r.method === '수동') tags.push('<span class="tag amber">직원 수동</span>');
+            if (r.test) tags.push('<span class="tag">테스트</span>');
+            return '<tr><td>' + esc(String(r.time).slice(11, 16)) + '</td><td>' + esc(mShort[r.museumId] || r.museumName) + '</td><td><b>' + esc(r.typedName) + '</b></td><td>' + esc(r.last4) + '</td>' +
+              '<td class="num">' + num(r.people) + '</td><td style="font-size:12.5px">' + esc(ageText(r.ages)) + '</td><td>' + esc(r.region) + '</td><td>' + tags.join(' ') + '</td></tr>';
+          }).join('') || '<tr><td colspan="8" class="empty">조건에 맞는 내역이 없어요.</td></tr>';
+        }
+        q.addEventListener('input', draw); dm.addEventListener('change', draw); ds.addEventListener('change', draw); draw();
+        countUp(box);
+      }
+      if (RECORDS) go(RECORDS);
+      else call('adminRecords', TOKEN).then(function (rs) { RECORDS = rs; go(rs); })
+        .catch(function (e) { box.className = ''; box.innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
+    }
+
     function tabOverview(el) {
+      if (DAY_SEL) return tabDay(el);
       var t = D.totals, m = D.meta;
       var kp = function (l, v, unit, s, cls) { return '<div class="kpi glass ' + (cls || '') + '"><div class="l">' + l + '</div><div class="v"><span data-count="' + v + '">' + num(v) + '</span><small>' + unit + '</small></div><div class="s">' + s + '</div></div>'; };
       var museums = m.museums.map(function (mm) {
@@ -471,24 +591,7 @@
       var hours = [];
       for (var h = 9; h <= 18; h++) hours.push({ label: h + '시', short: String(h), value: D.byHour[h] || 0 });
 
-      var ups = m.uploads || [], lastU = ups[0];
-      var nextU = (function () {
-        var now = Date.now(), start = Date.parse('2026-10-30T09:00:00+09:00'), end = Date.parse('2026-11-08T18:00:00+09:00');
-        if (now >= end) return '';
-        if (now < start) return '10/30 09:00';
-        var k = new Date(Math.floor((now + 9 * 3600e3) / 3600e3) * 3600e3 + 3600e3); // 다음 정각 (KST)
-        var h = k.getUTCHours();
-        if (h < 9) k = new Date(k.getTime() + (9 - h) * 3600e3);
-        else if (h > 18) k = new Date(k.getTime() + (24 - h + 9) * 3600e3);
-        if (k.getTime() - 9 * 3600e3 > end) return '';
-        var hh = k.getUTCHours();
-        return (k.getUTCMonth() + 1) + '/' + k.getUTCDate() + ' ' + (hh < 10 ? '0' : '') + hh + ':00';
-      })();
-      el.innerHTML =
-        '<div class="notice" style="background:var(--paper-2);margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:14.5px">' +
-          '<span><b>명단 최근 업데이트</b> ' + (lastU ? esc(lastU.at.slice(5).replace('-', '/')) + ' · 유효 ' + num(lastU.tickets) + '장 <span style="color:var(--muted)">(' + esc(lastU.name) + ')</span>' : '아직 없음') + '</span>' +
-          '<span style="color:var(--ink-2)">자동 업데이트: 10/30(금)~11/8(일) 매일 9시~18시 매시 정각' + (nextU ? ' · 다음 예정 ' + esc(nextU) : '') + '</span>' +
-        '</div>' +
+      el.innerHTML = updBarHtml() + dayTabsHtml() +
         '<div class="kpis">' +
         kp('입장 인원 합계', t.people, '명', '입장 확인 ' + num(t.entries) + '건의 인원 합 (재방문 포함)', 'accent') +
         kp('실방문 인원', t.uniquePeople, '명', '구매자별로 한 번에 가장 많이 들어온 인원의 합') +
@@ -510,7 +613,16 @@
         '<section class="glass panel"><h2>날짜별 입장 인원</h2><p class="desc">' + esc(md(m.start)) + ' ~ ' + esc(md(m.end)) + '</p>' + hbars(days, '명') + '</section>' +
         '<section class="glass panel"><h2>시간대별 입장 인원</h2><p class="desc">9시 ~ 18시 (입장 확인 시각 기준)</p>' + vbars(hours, '명') + '</section>' +
         '</div>' +
+        '<section class="glass panel" style="margin-top:14px"><h2>날짜별 요약</h2><p class="desc">줄을 누르면 그날 내역으로 이동해요.</p><div class="tbl-wrap"><table><thead><tr><th>날짜</th><th class="num">입장 건수</th><th class="num">입장 인원</th>' +
+          m.museums.map(function (mm) { return '<th class="num">' + esc(mm.short.replace('미술관', '')) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+          dayList.map(function (d) { var x = D.byDate[d] || {}; return '<tr class="dayrow" data-day="' + d + '" style="cursor:pointer"><td><b>' + esc(md(d)) + '</b></td><td class="num">' + num(x.entries || 0) + '</td><td class="num"><b>' + num(x.people || 0) + '</b></td>' +
+            m.museums.map(function (mm) { return '<td class="num">' + num(x[mm.id] || 0) + '</td>'; }).join('') + '</tr>'; }).join('') +
+          '<tr style="background:var(--paper-2)"><td><b>합계</b></td><td class="num"><b>' + num(t.entries) + '</b></td><td class="num"><b>' + num(t.people) + '</b></td>' +
+            m.museums.map(function (mm) { return '<td class="num"><b>' + num((D.byMuseum[mm.id] || {}).people || 0) + '</b></td>'; }).join('') + '</tr>' +
+        '</tbody></table></div></section>' +
         (m.testRecords ? '<div class="notice warn">' + (m.testMode ? '테스트 모드라서 테스트 기록 ' + m.testRecords + '건도 위 집계에 포함돼 있어요. 테스트 모드를 끄면 빠져요.' : '테스트 기록 ' + m.testRecords + '건은 위 집계에서 빠져 있어요.') + ' [기록·관리] 탭에서 지울 수 있어요.</div>' : '');
+      bindDayTabs(el);
+      el.querySelectorAll('tr.dayrow').forEach(function (tr) { tr.addEventListener('click', function () { DAY_SEL = tr.getAttribute('data-day'); tabOverview(el); window.scrollTo({ top: 0, behavior: 'smooth' }); }); });
       var soldCard = el.querySelector('.kpi.sold');
       if (soldCard) { soldCard.style.cursor = 'pointer'; soldCard.title = '취소·환불 목록 보기'; soldCard.addEventListener('click', function () { TAB = 'cancel'; render(); }); }
       el.querySelectorAll('.toggle button').forEach(function (b) {
