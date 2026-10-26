@@ -437,7 +437,7 @@
       return '<div class="bars">' + items.map(function (i) {
         return '<div class="bar" title="' + esc(i.label + ': ' + num(i.value) + unit + (i.extra ? ' · ' + i.extra : '')) + '">' +
           '<span class="lab">' + esc(i.label) + '</span>' +
-          '<span class="trk"><span class="fil" style="display:block;width:' + (i.value / max * 100).toFixed(1) + '%"></span></span>' +
+          '<span class="trk"><span class="fil" style="display:block;' + (i.color ? 'background:' + i.color + ';' : '') + 'width:' + (i.value / max * 100).toFixed(1) + '%"></span></span>' +
           '<span class="val">' + num(i.value) + '</span></div>';
       }).join('') + '</div>';
     }
@@ -451,6 +451,27 @@
     }
 
     /* ---------- 탭: 현황 ---------- */
+    var MCOL = { gana: '#4BB27A', jangukjin: '#4A66B4', minbokjin: '#F0B43A', ansangchul: '#D9434B' };
+    function stackVbars(hrs, byHM, museums) {
+      var tot = hrs.map(function (h) { var x = byHM[h] || {}; return museums.reduce(function (a, mm) { return a + (x[mm.id] || 0); }, 0); });
+      var max = Math.max.apply(null, tot.concat([1]));
+      return '<div style="display:flex;gap:6px 14px;flex-wrap:wrap;margin:0 0 10px;font-size:13px;font-weight:700;color:var(--ink-2)">' +
+        museums.map(function (mm) { return '<span style="display:inline-flex;align-items:center;gap:6px"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:' + (MCOL[mm.id] || '#999') + '"></i>' + esc(mm.short) + '</span>'; }).join('') + '</div>' +
+        '<div style="display:flex;gap:6px;align-items:stretch;height:200px">' + hrs.map(function (h, i) {
+          var x = byHM[h] || {};
+          var tip = h + '시 · ' + museums.map(function (mm) { return mm.short + ' ' + (x[mm.id] || 0) + '명'; }).join(' · ');
+          var segs = museums.map(function (mm) {
+            var v = x[mm.id] || 0; if (!v) return '';
+            return '<span style="display:block;flex:none;height:' + (v / max * 100).toFixed(2) + '%;background:' + (MCOL[mm.id] || '#999') + ';border-top:1px solid rgba(255,255,255,.7)"></span>';
+          }).join('');
+          return '<div title="' + esc(tip) + '" style="flex:1;display:flex;flex-direction:column;align-items:center;min-width:0">' +
+            '<span style="font-size:11.5px;font-weight:800;height:16px">' + (tot[i] ? num(tot[i]) : '') + '</span>' +
+            '<span style="flex:1;width:100%;display:flex;flex-direction:column-reverse;border-radius:6px 6px 0 0;overflow:hidden;background:linear-gradient(to top,var(--line) 0 2px,transparent 2px)">' + segs + '</span>' +
+            '<span style="font-size:11.5px;color:var(--muted);margin-top:4px">' + h + '</span></div>';
+        }).join('') + '</div>';
+    }
+    function hourList() { var a = []; for (var h = 9; h <= 18; h++) a.push(h); return a; }
+
     function updBarHtml() {
       var m = D.meta;
       var ups = m.uploads || [], lastU = ups[0];
@@ -508,18 +529,19 @@
         var firstAt = {};
         recs.forEach(function (r) { if (!useRec(r)) return; if (!firstAt[r.key] || r.time < firstAt[r.key]) firstAt[r.key] = r.time; });
         var rs = recs.filter(function (r) { return r.date === d && useRec(r); }).sort(function (a, b) { return a.time < b.time ? -1 : a.time > b.time ? 1 : 0; });
-        var people = 0, groups = {}, newG = 0, byM = {}, byMe = {}, byH = {}, byR = {}, byA = {}, manual = 0, re = 0;
+        var people = 0, groups = {}, newG = 0, byM = {}, byMe = {}, byH = {}, byHM = {}, byR = {}, byA = {}, manual = 0, re = 0;
         rs.forEach(function (r) {
           people += r.people;
           if (!groups[r.key]) { groups[r.key] = true; if (String(firstAt[r.key] || '').slice(0, 10) === d) newG++; }
           byM[r.museumId] = (byM[r.museumId] || 0) + r.people; byMe[r.museumId] = (byMe[r.museumId] || 0) + 1;
           byH[r.hour] = (byH[r.hour] || 0) + r.people;
+          var hmx = byHM[r.hour] || (byHM[r.hour] = {}); hmx[r.museumId] = (hmx[r.museumId] || 0) + r.people;
           byR[r.region] = (byR[r.region] || 0) + r.people;
           (r.ages || []).forEach(function (n, i) { var a = (m.ageBands || [])[i]; if (a) byA[a] = (byA[a] || 0) + n; });
           if (r.method === '수동') manual++; if (r.dup) re++;
         });
         var nG = Object.keys(groups).length;
-        var museums = m.museums.map(function (mm) { return { label: mm.short, value: byM[mm.id] || 0, extra: '입장 ' + (byMe[mm.id] || 0) + '건' }; });
+        var museums = m.museums.map(function (mm) { return { label: mm.short, value: byM[mm.id] || 0, extra: '입장 ' + (byMe[mm.id] || 0) + '건', color: MCOL[mm.id] }; });
         var hours = []; for (var h = 9; h <= 18; h++) hours.push({ label: h + '시', short: String(h), value: byH[h] || 0 });
         var regions = Object.keys(byR).map(function (k) { return { label: k, value: byR[k] }; }).sort(function (a, b) { return b.value - a.value; });
         var ages = (m.ageBands || []).map(function (a) { return { label: a, value: byA[a] || 0 }; });
@@ -534,7 +556,7 @@
           '</div>' +
           '<div class="grid g2">' +
           '<section class="glass panel"><h2>미술관별 입장 인원</h2>' + hbars(museums, '명') + '</section>' +
-          '<section class="glass panel"><h2>시간대별 입장 인원</h2>' + vbars(hours, '명') + '</section>' +
+          '<section class="glass panel"><h2>시간대별 입장 인원</h2>' + stackVbars(hourList(), byHM, m.museums) + '</section>' +
           '<section class="glass panel"><h2>어느 지역에서 왔나요</h2><p class="desc">이날 입장 인원 합 기준</p>' + hbars(regions, '명') + '</section>' +
           '<section class="glass panel"><h2>연령대별 입장 인원</h2><p class="desc">이날 입장 인원 합 기준</p>' + hbars(ages, '명') + '</section>' +
           '</div>' +
@@ -576,7 +598,7 @@
       var kp = function (l, v, unit, s, cls) { return '<div class="kpi glass ' + (cls || '') + '"><div class="l">' + l + '</div><div class="v"><span data-count="' + v + '">' + num(v) + '</span><small>' + unit + '</small></div><div class="s">' + s + '</div></div>'; };
       var museums = m.museums.map(function (mm) {
         var x = D.byMuseum[mm.id] || { people: 0, entries: 0, groups: 0 };
-        return { label: mm.short, value: x.people, extra: '입장 ' + x.entries + '건 · 그룹 ' + x.groups };
+        return { label: mm.short, value: x.people, extra: '입장 ' + x.entries + '건 · 그룹 ' + x.groups, color: MCOL[mm.id] };
       });
       var regionSrc = REGION_MODE === 'unique' ? D.byRegionUnique : D.byRegionEntries;
       var regions = Object.keys(regionSrc).map(function (k) { return { label: k, value: regionSrc[k] }; });
@@ -611,7 +633,7 @@
         '<p class="desc" style="margin-top:-4px">' + (REGION_MODE === 'unique' ? '구매자별 첫 입장 때 고른 지역 × 한 번에 가장 많이 들어온 인원' : '모든 입장 확인 건의 인원 합 (재방문 포함)') + '</p>' + hbars(regions, '명') + '</section>' +
         '<section class="glass panel"><h2>연령대별 방문 인원</h2><p class="desc">' + (REGION_MODE === 'unique' ? '구매자별로 한 번에 가장 많이 들어온 때의 연령 구성' : '모든 입장 확인 건의 연령대 인원 합 (재방문 포함)') + ' · 지역 카드의 보기 방식과 함께 바뀌어요</p>' + hbars(ages, '명') + '</section>' +
         '<section class="glass panel"><h2>날짜별 입장 인원</h2><p class="desc">' + esc(md(m.start)) + ' ~ ' + esc(md(m.end)) + '</p>' + hbars(days, '명') + '</section>' +
-        '<section class="glass panel"><h2>시간대별 입장 인원</h2><p class="desc">9시 ~ 18시 (입장 확인 시각 기준)</p>' + vbars(hours, '명') + '</section>' +
+        '<section class="glass panel"><h2>시간대별 입장 인원</h2><p class="desc">9시 ~ 18시 (입장 확인 시각 기준) · 색은 미술관이에요. 막대에 마우스를 올리면 미술관별 인원이 보여요.</p>' + stackVbars(hourList(), D.byHourMuseum || {}, m.museums) + '</section>' +
         '</div>' +
         '<section class="glass panel" style="margin-top:14px"><h2>날짜별 요약</h2><p class="desc">줄을 누르면 그날 내역으로 이동해요.</p><div class="tbl-wrap"><table><thead><tr><th>날짜</th><th class="num">입장 건수</th><th class="num">입장 인원</th>' +
           m.museums.map(function (mm) { return '<th class="num">' + esc(mm.short.replace('미술관', '')) + '</th>'; }).join('') + '</tr></thead><tbody>' +
