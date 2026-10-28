@@ -698,7 +698,7 @@
     }
 
     /* ---------- 탭: 취소·환불 ---------- */
-    var CANCEL_SORT = 'new', CANCEL_ST = '';
+    var CANCEL_SORT = 'new', CANCEL_ST = '', CANCEL_DAY = '';
     function tabCancel(el) {
       el.innerHTML = '<section class="glass panel"><h2>취소·환불 목록</h2>' +
         '<p class="desc">NOL 명단에서 <b>취소완료·환불요청</b> 상태인 주문이에요. 명단을 업데이트할 때마다 함께 갱신돼요. <span class="tag amber">노란 줄</span>은 취소·환불했지만 <b>입장 기록이 있는</b> 구매자예요. 입장 기록이 있으면 입장 때 입력한 <b>실명</b>이 함께 나와요.</p>' +
@@ -716,23 +716,39 @@
             }).join('') + '</select>' +
           '<select id="cso" class="input" style="width:auto"><option value="new">최신순 (변경일)</option><option value="old">오래된순 (변경일)</option><option value="bnew">구매일 최신순</option><option value="bold">구매일 오래된순</option></select>' +
           '<span id="cn" style="color:var(--muted);font-weight:700"></span></div>' +
+          '<div id="cdays" style="display:flex;gap:6px;overflow-x:auto;padding:14px 2px 6px;scrollbar-width:thin"></div>' +
           '<div class="tbl-wrap"><table><thead><tr><th>변경일</th><th>상태</th><th>구매자</th><th>뒷자리</th><th class="num">매수</th><th>주문번호</th><th>채널</th><th>구매일</th><th>입장 기록</th></tr></thead><tbody id="ctb"></tbody></table></div>';
         var q = box.querySelector('#cq'), st = box.querySelector('#cst'), so = box.querySelector('#cso'), tb = box.querySelector('#ctb'), cn = box.querySelector('#cn');
         st.value = CANCEL_ST; so.value = CANCEL_SORT;
         function draw() {
           CANCEL_ST = st.value; CANCEL_SORT = so.value;
           var s = q.value.trim().toLowerCase();
-          var rows = list.filter(function (c) {
+          var base = list.filter(function (c) {
             if (CANCEL_ST === 'entered') { if (!c.entered) return false; }
             else if (CANCEL_ST && c.status !== CANCEL_ST) return false;
             if (!s) return true;
             return (c.maskedName + ' ' + (c.realNames || []).join(' ') + ' ' + c.last4 + ' ' + c.orderNo + ' ' + c.pins).toLowerCase().indexOf(s) >= 0;
           });
+          var dayOf = function (c) { return String(c.changedAt || '').slice(0, 10) || '-'; };
+          var byDay = {};
+          base.forEach(function (c) { var k = dayOf(c); if (!byDay[k]) byDay[k] = { n: 0, t: 0 }; byDay[k].n++; byDay[k].t += c.tickets; });
+          var dayKeys = Object.keys(byDay).sort().reverse();
+          if (CANCEL_DAY && !byDay[CANCEL_DAY]) CANCEL_DAY = '';
+          var allT = base.reduce(function (n, c) { return n + c.tickets; }, 0);
+          var chip = function (k, label, cnt) {
+            var sel = CANCEL_DAY === k;
+            return '<button type="button" data-cday="' + esc(k) + '" style="flex:none;border:0;border-radius:999px;padding:8px 14px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;' +
+              (sel ? 'background:#1F7A4A;color:#fff;box-shadow:0 3px 0 #145533' : 'background:#fff;color:var(--ink-2);box-shadow:inset 0 0 0 1.5px var(--line)') + '">' +
+              label + ' <small style="opacity:.8;font-weight:700">' + num(cnt) + '장</small></button>';
+          };
+          box.querySelector('#cdays').innerHTML = '<span style="flex:none;align-self:center;font-weight:800;color:var(--muted);font-size:13px;margin-right:2px">변경일</span>' +
+            chip('', '전체 날짜', allT) + dayKeys.map(function (k) { return chip(k, k !== '-' ? esc(md(k)) : '날짜 없음', byDay[k].t); }).join('');
+          var rows = CANCEL_DAY ? base.filter(function (c) { return dayOf(c) === CANCEL_DAY; }) : base;
           var f = (CANCEL_SORT === 'bnew' || CANCEL_SORT === 'bold') ? 'buyDate' : 'changedAt';
           var dir = (CANCEL_SORT === 'new' || CANCEL_SORT === 'bnew') ? -1 : 1;
           rows.sort(function (a, b) { var x = a[f] || '', y = b[f] || ''; return x < y ? -dir : x > y ? dir : 0; });
           var tickets = rows.reduce(function (n, c) { return n + c.tickets; }, 0);
-          cn.textContent = num(rows.length) + '건 · ' + num(tickets) + '장';
+          cn.textContent = (CANCEL_DAY ? (CANCEL_DAY === '-' ? '날짜 없음' : md(CANCEL_DAY)) + ' · ' : '') + num(rows.length) + '건 · ' + num(tickets) + '장';
           tb.innerHTML = rows.slice(0, 1000).map(function (c) {
             return '<tr class="' + (c.entered ? 'hl' : '') + '"><td>' + esc(String(c.changedAt).slice(5, 16)) + '</td>' +
               '<td><span class="tag ' + (c.status === '환불요청' ? 'amber' : 'blue') + '">' + esc(c.status) + '</span>' + (c.entered ? ' <span class="tag" style="background:var(--red);color:#fff">입장 후</span>' : '') + '</td>' +
@@ -742,7 +758,9 @@
               '<td>' + (c.entered ? '<b style="color:var(--red)">' + c.entered + '회 · ' + c.enteredPeople + '명</b><br><small>' + esc(String(c.lastEntry).slice(5, 16)) + '</small>' : '<span style="color:var(--muted)">없음</span>') + '</td></tr>';
           }).join('') || '<tr><td colspan="9" class="empty">' + (CANCEL_ST === 'entered' ? '입장한 뒤 취소·환불한 구매자는 아직 없어요.' : '해당하는 취소·환불 건이 없어요.') + '</td></tr>';
         }
-        q.addEventListener('input', draw); st.addEventListener('change', draw); so.addEventListener('change', draw); draw();
+        q.addEventListener('input', draw); st.addEventListener('change', draw); so.addEventListener('change', draw);
+        box.querySelector('#cdays').addEventListener('click', function (ev) { var b = ev.target.closest('button[data-cday]'); if (!b) return; CANCEL_DAY = b.getAttribute('data-cday'); draw(); });
+        draw();
       }).catch(function (e) { box.className = ''; box.innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
     }
 
