@@ -581,63 +581,84 @@
         });
       });
     }
-    /* ---------- 연령대 카드 ---------- */
-    var AGES = BOOT.ageBands || ['어린이(~12세)', '청소년(13~19세)', '20대', '30대', '40대', '50대', '60대 이상'];
-    var ageState = { counts: [], peopleName: '' };
-    function ageCard() {
-      return '<section class="card glass ages" id="sec-age"><span class="q">함께 오신 분들의 연령대 <span class="req">필수</span></span>' +
-        '<div class="sub" id="agesub" style="margin:2px 0 0">먼저 위에서 인원을 선택해 주세요</div><div class="agelist">' +
-        AGES.map(function (a, i) {
-          return '<div class="agerow" data-i="' + i + '"><span class="al">' + esc(a) + '</span>' +
-            '<button type="button" class="st minus" aria-label="' + esc(a) + ' 한 명 빼기">−</button>' +
-            '<b class="ac" aria-live="polite">0</b>' +
-            '<button type="button" class="st plus" aria-label="' + esc(a) + ' 한 명 더하기">+</button></div>';
-        }).join('') + '</div><div class="agesum" id="agesum"></div></section>';
-    }
-    function agePeople() { return Number(radioVal(ageState.peopleName)) || 0; }
-    function ageSum() { return ageState.counts.reduce(function (a, b) { return a + b; }, 0); }
-    function agesOk() { var n = agePeople(); return n > 0 && ageSum() === n; }
-    function ageRender(popIdx) {
-      var n = agePeople(), s = ageSum();
-      app.querySelectorAll('.agerow').forEach(function (row) {
-        var i = Number(row.getAttribute('data-i')), b = row.querySelector('.ac');
-        b.textContent = ageState.counts[i];
-        if (popIdx === i) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
-        row.classList.toggle('on', ageState.counts[i] > 0);
-        row.querySelector('.minus').disabled = ageState.counts[i] <= 0;
-        row.querySelector('.plus').disabled = !n || s >= n;
-      });
-      var sum = app.querySelector('#agesum'), sub = app.querySelector('#agesub');
-      if (sub) sub.textContent = n ? '본인 포함 ' + n + '명을 연령대별로 나눠 주세요' : '먼저 위에서 인원을 선택해 주세요';
-      if (sum) {
-        sum.innerHTML = n ? '<b>' + s + '</b> / ' + n + '명' + (s === n ? ' ✓' : ' · ' + (n - s) + '명 남음') : '';
-        sum.classList.toggle('done', !!n && s === n);
+    /* ---------- 인원 나누기 카드 (연령대·성별 공통) ---------- */
+    function makeCounter(o) {
+      var st = { counts: [], peopleName: '' };
+      function sec() { return app.querySelector('#sec-' + o.id); }
+      function card() {
+        return '<section class="card glass ages" id="sec-' + o.id + '"><span class="q">' + esc(o.title) + ' <span class="req">필수</span></span>' +
+          '<div class="sub csub" style="margin:2px 0 0">먼저 위에서 인원을 선택해 주세요</div><div class="agelist">' +
+          o.bands.map(function (a, i) {
+            return '<div class="agerow" data-i="' + i + '"><span class="al">' + esc(a) + '</span>' +
+              '<button type="button" class="st minus" aria-label="' + esc(a) + ' 한 명 빼기">−</button>' +
+              '<b class="ac" aria-live="polite">0</b>' +
+              '<button type="button" class="st plus" aria-label="' + esc(a) + ' 한 명 더하기">+</button></div>';
+          }).join('') + '</div><div class="agesum csum"></div></section>';
       }
-    }
-    function ageReset() {
-      var n = agePeople(), saved = null;
-      try { saved = JSON.parse(store('jh_ages') || 'null'); } catch (e) { saved = null; }
-      var ok = saved && saved.length === AGES.length && saved.reduce(function (a, b) { return a + (Number(b) || 0); }, 0) === n;
-      ageState.counts = ok ? saved.map(function (v) { return Number(v) || 0; }) : AGES.map(function () { return 0; });
-      ageRender();
-    }
-    function bindAges(peopleName) {
-      ageState.peopleName = peopleName;
-      ageState.counts = AGES.map(function () { return 0; });
-      app.querySelectorAll('input[name="' + peopleName + '"]').forEach(function (r) { r.addEventListener('change', ageReset); });
-      app.querySelectorAll('.agerow').forEach(function (row) {
-        var i = Number(row.getAttribute('data-i'));
-        row.querySelector('.minus').addEventListener('click', function () {
-          if (ageState.counts[i] > 0) { ageState.counts[i]--; ageRender(i); refreshDock(); buzz(10); }
+      function people() { return Number(radioVal(st.peopleName)) || 0; }
+      function sum() { return st.counts.reduce(function (a, b) { return a + b; }, 0); }
+      function ok() { var n = people(); return n > 0 && sum() === n; }
+      function render(popIdx) {
+        var n = people(), s = sum(), el = sec();
+        if (!el) return;
+        el.querySelectorAll('.agerow').forEach(function (row) {
+          var i = Number(row.getAttribute('data-i')), b = row.querySelector('.ac');
+          b.textContent = st.counts[i];
+          if (popIdx === i) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+          row.classList.toggle('on', st.counts[i] > 0);
+          row.querySelector('.minus').disabled = st.counts[i] <= 0;
+          row.querySelector('.plus').disabled = !n || s >= n;
         });
-        row.querySelector('.plus').addEventListener('click', function () {
-          if (ageSum() < agePeople()) { ageState.counts[i]++; ageRender(i); refreshDock(); buzz(10); }
+        var sm = el.querySelector('.csum'), sub = el.querySelector('.csub');
+        if (sub) sub.textContent = n ? '본인 포함 ' + n + '명을 ' + o.splitWord + ' 나눠 주세요' : '먼저 위에서 인원을 선택해 주세요';
+        if (sm) {
+          sm.innerHTML = n ? '<b>' + s + '</b> / ' + n + '명' + (s === n ? ' ✓' : ' · ' + (n - s) + '명 남음') : '';
+          sm.classList.toggle('done', !!n && s === n);
+        }
+      }
+      function reset() {
+        var n = people(), saved = null;
+        try { saved = JSON.parse(store(o.storeKey) || 'null'); } catch (e) { saved = null; }
+        var good = saved && saved.length === o.bands.length && saved.reduce(function (a, b) { return a + (Number(b) || 0); }, 0) === n;
+        st.counts = good ? saved.map(function (v) { return Number(v) || 0; }) : o.bands.map(function () { return 0; });
+        render();
+      }
+      function bind(peopleName) {
+        st.peopleName = peopleName;
+        st.counts = o.bands.map(function () { return 0; });
+        app.querySelectorAll('input[name="' + peopleName + '"]').forEach(function (r) { r.addEventListener('change', reset); });
+        sec().querySelectorAll('.agerow').forEach(function (row) {
+          var i = Number(row.getAttribute('data-i'));
+          row.querySelector('.minus').addEventListener('click', function () {
+            if (st.counts[i] > 0) { st.counts[i]--; render(i); refreshDock(); buzz(10); }
+          });
+          row.querySelector('.plus').addEventListener('click', function () {
+            if (sum() < people()) { st.counts[i]++; render(i); refreshDock(); buzz(10); }
+          });
         });
-      });
-      if (agePeople()) ageReset(); else ageRender();
+        if (people()) reset(); else render();
+      }
+      function check() { return { label: o.label, ok: ok(), el: sec(), msg: o.msg }; }
+      return { card: card, bind: bind, check: check,
+        counts: function () { return st.counts.slice(); },
+        save: function () { store(o.storeKey, JSON.stringify(st.counts)); } };
     }
-    function ageCheck() {
-      return { label: '연령', ok: agesOk(), el: app.querySelector('#sec-age'), msg: '함께 오신 분들의 연령대를 인원수만큼 골라 주세요' };
+    var AGES = BOOT.ageBands || ['어린이(~12세)', '청소년(13~19세)', '20대', '30대', '40대', '50대', '60대 이상'];
+    var GENDERS = BOOT.genderBands || ['남성', '여성'];
+    var FIRSTS = BOOT.firstVisitOpts || ['예', '아니요'];
+    var AGEC = makeCounter({ id: 'age', bands: AGES, storeKey: 'jh_ages', title: '함께 오신 분들의 연령대', splitWord: '연령대별로', label: '연령', msg: '함께 오신 분들의 연령대를 인원수만큼 골라 주세요' });
+    var GENC = makeCounter({ id: 'gender', bands: GENDERS, storeKey: 'jh_genders', title: '함께 오신 분들의 성별', splitWord: '성별로', label: '성별', msg: '함께 오신 분들의 성별을 인원수만큼 골라 주세요' });
+    function ageCard() { return AGEC.card() + GENC.card(); }
+    function bindAges(peopleName) { AGEC.bind(peopleName); GENC.bind(peopleName); }
+    function ageChecks() { return [AGEC.check(), GENC.check()]; }
+    function saveCounts() { AGEC.save(); GENC.save(); }
+
+    function firstVisitCard(name) {
+      var saved = store('jh_yfirst');
+      return '<section class="card glass" id="sec-first"><span class="q">경기도 양주시에 처음 방문하셨나요? <span class="req">필수</span></span>' +
+        '<div class="chips" role="radiogroup" aria-label="경기도 양주시에 처음 방문하셨나요?">' + FIRSTS.map(function (v) {
+          return '<label class="opt"><input type="radio" name="' + name + '" value="' + esc(v) + '"' + (saved === v ? ' checked' : '') + '><span>' + esc(v) + '</span></label>';
+        }).join('') + '</div></section>';
     }
 
     function regionCard(name) {
@@ -648,7 +669,7 @@
         '<label><input type="checkbox" id="consent"> <span><span class="req">필수</span> 개인정보 수집·이용에 동의합니다</span></label>' +
         '<dl>' +
         '<dt>수집 목적</dt><dd>통합이용권 구매 확인 및 입장 처리, 입장 화면 재사용 방지, 방문 통계 작성</dd>' +
-        '<dt>수집 항목</dt><dd>성함(실명), 휴대폰 번호 뒷자리 4자리, 거주 지역(시·도), 입장 인원 및 일행 연령대, 입장 기록(미술관·일시), 접속 기기 식별값</dd>' +
+        '<dt>수집 항목</dt><dd>성함(실명), 휴대폰 번호 뒷자리 4자리, 거주 지역, 양주시 첫 방문 여부, 입장 인원 및 일행 연령대·성별, 입장 기록(미술관·일시), 접속 기기 식별값</dd>' +
         '<dt>보유 기간</dt><dd>' + esc(BOOT.retention) + ' 파기 (방문 통계는 개인을 알아볼 수 없는 형태로만 보관)</dd>' +
         '<dt>거부 권리</dt><dd>동의를 거부하실 수 있어요. 거부하시면 화면 입장 확인은 어렵고, 현장 직원 확인으로 입장하실 수 있어요.</dd>' +
         '</dl>' +
@@ -730,6 +751,7 @@
         peopleCard('people', r.tickets, preset, '본인 포함 · 구매하신 ' + esc(r.tickets) + '매까지 선택') +
         ageCard() +
         regionCard('region') +
+        firstVisitCard('yfirst') +
         consentCard());
       bindPeople('people');
       bindAges('people');
@@ -741,18 +763,19 @@
         checks: function () {
           return [
             { label: '인원', ok: !!radioVal('people'), el: app.querySelector('#sec-people'), msg: '오늘 함께 입장하는 인원을 선택해 주세요' },
-            ageCheck(),
+          ].concat(ageChecks()).concat([
             { label: '지역', ok: !!radioVal('region'), el: app.querySelector('#sec-region'), msg: '어느 지역에서 오셨는지 선택해 주세요' },
+            { label: '첫 방문', ok: !!radioVal('yfirst'), el: app.querySelector('#sec-first'), msg: '양주시에 처음 방문하셨는지 선택해 주세요' },
             { label: '동의', ok: c.checked, el: app.querySelector('#sec-consent'), msg: '개인정보 수집·이용에 동의해 주세요' }
-          ];
+          ]);
         },
         onGo: function () {
           var region = radioVal('region');
           setBusy(true);
-          call('apiCheckin', { m: M.id, name: state.name, l4: state.l4, people: Number(radioVal('people')), ages: ageState.counts.slice(), region: region, consent: c.checked, device: device })
+          call('apiCheckin', { m: M.id, name: state.name, l4: state.l4, people: Number(radioVal('people')), ages: AGEC.counts(), genders: GENC.counts(), region: region, firstVisit: radioVal('yfirst'), consent: c.checked, device: device })
             .then(function (res) {
               setBusy(false);
-              if (res.ok) { store('jh_region', region); store('jh_ages', JSON.stringify(ageState.counts)); app.removeEventListener('change', refreshDock); return viewResult(res); }
+              if (res.ok) { store('jh_region', region); store('jh_yfirst', radioVal('yfirst')); saveCounts(); app.removeEventListener('change', refreshDock); return viewResult(res); }
               if (res.reason === 'notfound') return viewNotFound(res);
               if (res.reason === 'period') return viewPeriod(res.when);
               toast(res.msg || '다시 시도해 주세요.');
@@ -879,6 +902,7 @@
         peopleCard('mpeople', 8, 0, '본인 포함 · 직원이 확인한 인원') +
         ageCard() +
         regionCard('mregion') +
+        firstVisitCard('myfirst') +
         consentCard() +
         '<section class="card glass" id="sec-pin"><div class="field"><label for="pin">직원 PIN <span class="req">필수</span></label><input id="pin" class="input" type="password" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="직원만 입력"></div></section>');
       bindPeople('mpeople');
@@ -892,19 +916,20 @@
         checks: function () {
           return [
             { label: '인원', ok: !!radioVal('mpeople'), el: app.querySelector('#sec-people'), msg: '입장 인원을 선택해 주세요' },
-            ageCheck(),
+          ].concat(ageChecks()).concat([
             { label: '지역', ok: !!radioVal('mregion'), el: app.querySelector('#sec-region'), msg: '지역을 선택해 주세요' },
+            { label: '첫 방문', ok: !!radioVal('myfirst'), el: app.querySelector('#sec-first'), msg: '양주시 첫 방문 여부를 선택해 주세요' },
             { label: '동의', ok: c.checked, el: app.querySelector('#sec-consent'), msg: '개인정보 수집·이용 동의가 필요해요' },
             { label: 'PIN', ok: pin.value.length >= 4, el: app.querySelector('#sec-pin'), msg: '직원 PIN을 입력해 주세요' }
-          ];
+          ]);
         },
         onGo: function () {
           var region = radioVal('mregion');
           setBusy(true);
-          call('apiManualCheckin', { m: M.id, name: state.name, l4: state.l4, people: Number(radioVal('mpeople')), ages: ageState.counts.slice(), region: region, consent: c.checked, pin: pin.value, device: device })
+          call('apiManualCheckin', { m: M.id, name: state.name, l4: state.l4, people: Number(radioVal('mpeople')), ages: AGEC.counts(), genders: GENC.counts(), region: region, firstVisit: radioVal('myfirst'), consent: c.checked, pin: pin.value, device: device })
             .then(function (res) {
               setBusy(false);
-              if (res.ok) { store('jh_region', region); store('jh_ages', JSON.stringify(ageState.counts)); app.removeEventListener('change', refreshDock); return viewResult(res); }
+              if (res.ok) { store('jh_region', region); store('jh_yfirst', radioVal('myfirst')); saveCounts(); app.removeEventListener('change', refreshDock); return viewResult(res); }
               if (res.reason === 'period') return viewPeriod(res.when);
               toast(res.msg || '다시 시도해 주세요.');
             }).catch(function () { setBusy(false); netFail(); });

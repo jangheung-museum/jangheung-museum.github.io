@@ -535,6 +535,24 @@
       var bands = D.meta.ageBands || [];
       return (ages || []).map(function (n, i) { return n ? String(bands[i] || '').replace(/\(.*\)/, '') + ' ' + n : ''; }).filter(Boolean).join(' · ');
     }
+    function genderText(g) {
+      var bands = D.meta.genderBands || ['남성', '여성'];
+      return (g || []).map(function (n, i) { return n ? String(bands[i] || '').replace('성', '') + ' ' + n : ''; }).filter(Boolean).join(' · ');
+    }
+    function detailText(r) {
+      return [ageText(r.ages), genderText(r.genders), r.firstVisit ? '양주 첫 방문 ' + r.firstVisit : ''].filter(Boolean).join(' / ');
+    }
+    function genderFirstPanel(gObj, fObj, desc) {
+      var m = D.meta;
+      var gs = (m.genderBands || ['남성', '여성']).map(function (a) { return { label: a, value: gObj[a] || 0 }; });
+      var fs = (m.firstVisitOpts || ['예', '아니요']).map(function (a) { return { label: a === '예' ? '예 (처음 방문)' : '아니요', value: fObj[a] || 0 }; });
+      var tot = function (l) { return l.reduce(function (s, x) { return s + x.value; }, 0); };
+      var pct = function (v, t) { return t ? Math.round(v / t * 100) + '%' : '-'; };
+      gs.forEach(function (x) { x.extra = pct(x.value, tot(gs)); }); fs.forEach(function (x) { x.extra = pct(x.value, tot(fs)); });
+      return '<section class="glass panel"><h2>성별 · 양주시 첫 방문</h2><p class="desc">' + desc + '</p>' +
+        '<h3 style="margin:6px 0 6px;font-size:15px">성별</h3>' + hbars(gs, '명') +
+        '<h3 style="margin:16px 0 6px;font-size:15px">경기도 양주시에 처음 방문하셨나요?</h3>' + hbars(fs, '명') + '</section>';
+    }
     function tabDay(el) {
       var m = D.meta, d = DAY_SEL;
       el.innerHTML = updBarHtml() + dayTabsHtml() + '<div id="dayx" class="loading"><span class="spinner"></span>그날 내역을 불러오는 중…</div>';
@@ -546,7 +564,7 @@
         var firstAt = {};
         recs.forEach(function (r) { if (!useRec(r)) return; if (!firstAt[r.key] || r.time < firstAt[r.key]) firstAt[r.key] = r.time; });
         var rs = recs.filter(function (r) { return r.date === d && useRec(r); }).sort(function (a, b) { return a.time < b.time ? -1 : a.time > b.time ? 1 : 0; });
-        var people = 0, groups = {}, newG = 0, byM = {}, byMe = {}, byH = {}, byHM = {}, byR = {}, byA = {}, manual = 0, re = 0;
+        var people = 0, groups = {}, newG = 0, byM = {}, byMe = {}, byH = {}, byHM = {}, byR = {}, byA = {}, byG = {}, byF = {}, manual = 0, re = 0;
         rs.forEach(function (r) {
           people += r.people;
           if (!groups[r.key]) { groups[r.key] = true; if (String(firstAt[r.key] || '').slice(0, 10) === d) newG++; }
@@ -555,6 +573,8 @@
           var hmx = byHM[r.hour] || (byHM[r.hour] = {}); hmx[r.museumId] = (hmx[r.museumId] || 0) + r.people;
           byR[r.region] = (byR[r.region] || 0) + r.people;
           (r.ages || []).forEach(function (n, i) { var a = (m.ageBands || [])[i]; if (a) byA[a] = (byA[a] || 0) + n; });
+          (r.genders || []).forEach(function (n, i) { var a = (m.genderBands || ['남성', '여성'])[i]; if (a) byG[a] = (byG[a] || 0) + n; });
+          if (r.firstVisit) byF[r.firstVisit] = (byF[r.firstVisit] || 0) + r.people;
           if (r.method === '수동') manual++; if (r.dup) re++;
         });
         var nG = Object.keys(groups).length;
@@ -576,12 +596,13 @@
           '<section class="glass panel"><h2>시간대별 입장 인원</h2>' + stackVbars(hourList(), byHM, m.museums) + '</section>' +
           '<section class="glass panel"><h2>어느 지역에서 왔나요</h2><p class="desc">이날 입장 인원 합 기준</p>' + hbars(regions, '명') + '</section>' +
           '<section class="glass panel"><h2>연령대별 입장 인원</h2><p class="desc">이날 입장 인원 합 기준</p>' + hbars(ages, '명') + '</section>' +
+          genderFirstPanel(byG, byF, '이날 입장 인원 합 기준 · 막대에 마우스를 올리면 비율이 보여요') +
           '</div>' +
           '<section class="glass panel" style="margin-top:14px"><h2>' + esc(md(d)) + ' 입장 내역 <span class="tag blue">' + num(rs.length) + '건</span></h2>' +
           '<div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="search" id="dq" placeholder="성함·뒷자리·지역 검색" style="flex:1;min-width:200px">' +
           '<select id="dm" class="input" style="width:auto"><option value="">전체 미술관</option>' + m.museums.map(function (mm) { return '<option value="' + esc(mm.id) + '">' + esc(mm.short) + '</option>'; }).join('') + '</select>' +
           '<select id="ds" class="input" style="width:auto"><option value="asc">시간 빠른순</option><option value="desc">시간 최근순</option></select><span id="dn" style="color:var(--muted);font-weight:700"></span></div>' +
-          '<div class="tbl-wrap"><table><thead><tr><th>시각</th><th>미술관</th><th>성함</th><th>뒷자리</th><th class="num">인원</th><th>연령</th><th>지역</th><th>비고</th></tr></thead><tbody id="dtb"></tbody></table></div></section>';
+          '<div class="tbl-wrap"><table><thead><tr><th>시각</th><th>미술관</th><th>성함</th><th>뒷자리</th><th class="num">인원</th><th>연령·성별·첫 방문</th><th>지역</th><th>비고</th></tr></thead><tbody id="dtb"></tbody></table></div></section>';
         var q = box.querySelector('#dq'), dm = box.querySelector('#dm'), ds = box.querySelector('#ds'), tb = box.querySelector('#dtb'), dn = box.querySelector('#dn');
         var mShort = {}; m.museums.forEach(function (mm) { mShort[mm.id] = mm.short; });
         function draw() {
@@ -598,7 +619,7 @@
             if (r.method === '수동') tags.push('<span class="tag amber">직원 수동</span>');
             if (r.test) tags.push('<span class="tag">테스트</span>');
             return '<tr><td>' + esc(String(r.time).slice(11, 16)) + '</td><td>' + esc(mShort[r.museumId] || r.museumName) + '</td><td><b>' + esc(r.typedName) + '</b></td><td>' + esc(r.last4) + '</td>' +
-              '<td class="num">' + num(r.people) + '</td><td style="font-size:12.5px">' + esc(ageText(r.ages)) + '</td><td>' + esc(r.region) + '</td><td>' + tags.join(' ') + '</td></tr>';
+              '<td class="num">' + num(r.people) + '</td><td style="font-size:12.5px">' + esc(detailText(r)) + '</td><td>' + esc(r.region) + '</td><td>' + tags.join(' ') + '</td></tr>';
           }).join('') || '<tr><td colspan="8" class="empty">조건에 맞는 내역이 없어요.</td></tr>';
         }
         q.addEventListener('input', draw); dm.addEventListener('change', draw); ds.addEventListener('change', draw); draw();
@@ -649,6 +670,8 @@
         '<div class="toggle" role="group"><button data-r="entries" aria-pressed="' + (REGION_MODE === 'entries') + '">입장 인원 합계</button><button data-r="unique" aria-pressed="' + (REGION_MODE === 'unique') + '">실방문 인원</button></div>' +
         '<p class="desc" style="margin-top:-4px">' + (REGION_MODE === 'unique' ? '구매자별 첫 입장 때 고른 지역 × 한 번에 가장 많이 들어온 인원' : '모든 입장 확인 건의 인원 합 (재방문 포함)') + '</p>' + hbars(regions, '명') + '</section>' +
         '<section class="glass panel"><h2>연령대별 방문 인원</h2><p class="desc">' + (REGION_MODE === 'unique' ? '구매자별로 한 번에 가장 많이 들어온 때의 연령 구성' : '모든 입장 확인 건의 연령대 인원 합 (재방문 포함)') + ' · 지역 카드의 보기 방식과 함께 바뀌어요</p>' + hbars(ages, '명') + '</section>' +
+        genderFirstPanel(REGION_MODE === 'unique' ? (D.byGenderUnique || {}) : (D.byGenderEntries || {}), REGION_MODE === 'unique' ? (D.byFirstUnique || {}) : (D.byFirstEntries || {}),
+          (REGION_MODE === 'unique' ? '구매자별 실방문 인원 기준 (첫 방문 여부는 첫 입장 때 답)' : '모든 입장 확인 건의 인원 합 (재방문 포함)') + ' · 지역 카드의 보기 방식과 함께 바뀌어요') +
         '<section class="glass panel"><h2>날짜별 입장 인원</h2><p class="desc">' + esc(md(m.start)) + ' ~ ' + esc(md(m.end)) + ' · 색은 미술관이에요. 막대에 마우스를 올리면 미술관별 인원이 보여요.</p>' + stackHbars(dayList.map(function (d) { return { label: md(d), parts: D.byDate[d] || {} }; }), m.museums) + '</section>' +
         '<section class="glass panel"><h2>시간대별 입장 인원</h2><p class="desc">9시 ~ 18시 (입장 확인 시각 기준) · 색은 미술관이에요. 막대에 마우스를 올리면 미술관별 인원이 보여요.</p>' + stackVbars(hourList(), D.byHourMuseum || {}, m.museums) + '</section>' +
         '</div>' +
@@ -1131,8 +1154,8 @@
         call('adminRecords', TOKEN).then(function (rs) {
           b.disabled = false;
           downloadCsv('입장기록_' + m.now.slice(0, 10) + '.csv',
-            ['입장ID', '일시', '미술관', '성함(실명)', '뒷자리', '입장인원', '지역', '구매매수', '확인방식', '2시간내재입장', '테스트', '직전입장', '명단이름(참고)'].concat((m.ageBands || []).map(function (a) { return '연령_' + a; })),
-            rs.map(function (r) { return [r.id, r.time, r.museumName, r.typedName, r.last4, r.people, r.region, r.tickets, r.method, r.dup ? 'Y' : '', r.test ? 'Y' : '', r.prev, r.maskedName].concat(r.ages || (m.ageBands || []).map(function () { return ''; })); }));
+            ['입장ID', '일시', '미술관', '성함(실명)', '뒷자리', '입장인원', '지역', '구매매수', '확인방식', '2시간내재입장', '테스트', '직전입장', '명단이름(참고)'].concat((m.ageBands || []).map(function (a) { return '연령_' + a; })).concat((m.genderBands || ['남성', '여성']).map(function (a) { return '성별_' + a; })).concat(['양주시첫방문']),
+            rs.map(function (r) { return [r.id, r.time, r.museumName, r.typedName, r.last4, r.people, r.region, r.tickets, r.method, r.dup ? 'Y' : '', r.test ? 'Y' : '', r.prev, r.maskedName].concat(r.ages || (m.ageBands || []).map(function () { return ''; })).concat(r.genders || (m.genderBands || ['남성', '여성']).map(function () { return ''; })).concat([r.firstVisit || '']); }));
         }).catch(function (e) { b.disabled = false; el.querySelector('#dlm').innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
       });
       el.querySelector('#del').addEventListener('click', function () {
