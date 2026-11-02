@@ -779,6 +779,7 @@
               '<td style="font-size:12.5px">' + esc(c.orderNo) + '</td><td style="font-size:12.5px">' + esc(c.channel) + '</td>' +
               '<td>' + esc(String(c.buyDate).slice(5, 16)) + '</td>' +
               '<td>' + (c.entered ? '<b style="color:var(--red)">취소 전 ' + c.entered + '회 입장</b><br><small>인원 누적 ' + c.enteredPeople + '명 (재방문 합)</small><br><small>' + esc(String(c.lastEntry).slice(5, 16)) + '</small>' : '<span style="color:var(--muted)">취소 전 없음</span>') +
+              (function () { if (!c.entered && !c.afterN) return ''; var bb = (D.buyers || []).filter(function (x) { return x.key === c.key; })[0]; var v = bb ? bb.tickets : 0; return '<br>' + (v ? '<small style="color:var(--green-text,#1F7A4A);font-weight:800">남은 유효 티켓 ' + v + '장</small>' : '<span class="tag" style="background:var(--red);color:#fff">전체 취소·환불 (유효 0장)</span>'); })() +
               (c.afterN ? '<br><small style="color:var(--muted)">취소 뒤 다른 티켓으로 ' + c.afterN + '회 · ' + c.afterPeople + '명</small>' : '') + '</td></tr>';
           }).join('') || '<tr><td colspan="9" class="empty">' + (CANCEL_ST === 'entered' ? '입장한 뒤 취소·환불한 구매자는 아직 없어요.' : '해당하는 취소·환불 건이 없어요.') + '</td></tr>';
         }
