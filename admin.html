@@ -727,7 +727,7 @@
         '<p class="desc">NOL 명단에서 <b>취소완료·환불요청</b> 상태인 주문이에요. 명단을 업데이트할 때마다 함께 갱신돼요. <span class="tag amber">노란 줄</span>은 <b>입장한 뒤에</b> 취소·환불한 건이에요. 오른쪽 <b>입장 기록</b> 칸에서 "입장한 뒤 취소"인지 "입장 전에 취소"(일부만 취소하고 남은 티켓으로 입장)인지, 한 번에 최대 몇 명이 들어왔는지, 남은 유효 티켓이 몇 장인지 볼 수 있어요. 입장 기록이 있으면 입장 때 입력한 <b>실명</b>이 함께 나와요.</p>' +
         '<div id="cx" class="loading"><span class="spinner"></span>불러오는 중…</div></section>';
       var box = el.querySelector('#cx');
-      var validOf = function (k) { var bb = (D.buyers || []).filter(function (x) { return x.key === k; })[0]; return bb ? bb.tickets : 0; };
+      var validOf = function (k) { return 0; };
       call('adminCancels', TOKEN).then(function (list) {
         box.className = '';
         box.innerHTML = '<div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
@@ -738,13 +738,20 @@
              ['entered', '입장 후 취소·환불', list.filter(function (c) { return c.entered; }).length],
              ['after', '취소 뒤 남은 티켓으로 입장', list.filter(function (c) { return !c.entered && c.afterN; }).length],
              ['visited', '입장 기록 있는 취소·환불 전체', list.filter(function (c) { return c.entered || c.afterN; }).length],
-             ['zero', '전체 취소·환불 (유효 0장) + 입장', list.filter(function (c) { return (c.entered || c.afterN) && !validOf(c.key); }).length]].map(function (o) {
+             ['zero', '전체 취소·환불 (유효 0장) + 입장', list.filter(function (c) { return (c.entered || c.afterN) && !c.valid; }).length]].map(function (o) {
               return '<option value="' + o[0] + '">' + o[1] + ' (' + o[2] + ')</option>';
             }).join('') + '</select>' +
           '<select id="cso" class="input" style="width:auto"><option value="new">최신순 (변경일)</option><option value="old">오래된순 (변경일)</option><option value="bnew">구매일 최신순</option><option value="bold">구매일 오래된순</option></select>' +
           '<span id="cn" style="color:var(--muted);font-weight:700"></span></div>' +
           '<div id="cdays" style="display:flex;gap:6px;overflow-x:auto;padding:14px 2px 6px;scrollbar-width:thin"></div>' +
           '<div class="tbl-wrap"><table><thead><tr><th>변경일</th><th>상태</th><th>구매자</th><th>뒷자리</th><th class="num">매수</th><th>주문번호</th><th>채널</th><th>구매일</th><th>입장 기록</th></tr></thead><tbody id="ctb"></tbody></table></div>';
+        var perKey = {};
+        list.forEach(function (c) { var p = perKey[c.key] || (perKey[c.key] = { cancel: 0, refund: 0 }); if (c.status === '환불요청') p.refund += c.tickets; else p.cancel += c.tickets; });
+        var ticketLine = function (c) {
+          var p = perKey[c.key] || { cancel: 0, refund: 0 }, v = Number(c.valid) || 0, buy = v + p.cancel + p.refund;
+          return '<br><small style="font-weight:700;color:var(--ink-2)">구매 ' + buy + '장 · ' + (p.cancel ? '취소 ' + p.cancel + '장 · ' : '') + (p.refund ? '환불요청 ' + p.refund + '장 · ' : '') +
+            (v ? '<span style="color:var(--green-text,#1F7A4A)">남은 ' + v + '장</span>' : '<span style="color:var(--red)">남은 0장</span>') + '</small>';
+        };
         var q = box.querySelector('#cq'), st = box.querySelector('#cst'), so = box.querySelector('#cso'), tb = box.querySelector('#ctb'), cn = box.querySelector('#cn');
         st.value = CANCEL_ST; so.value = CANCEL_SORT;
         function draw() {
@@ -754,7 +761,7 @@
             if (CANCEL_ST === 'entered') { if (!c.entered) return false; }
             else if (CANCEL_ST === 'after') { if (c.entered || !c.afterN) return false; }
             else if (CANCEL_ST === 'visited') { if (!c.entered && !c.afterN) return false; }
-            else if (CANCEL_ST === 'zero') { if ((!c.entered && !c.afterN) || validOf(c.key)) return false; }
+            else if (CANCEL_ST === 'zero') { if ((!c.entered && !c.afterN) || c.valid) return false; }
             else if (CANCEL_ST && c.status !== CANCEL_ST) return false;
             if (!s) return true;
             return (c.maskedName + ' ' + (c.realNames || []).join(' ') + ' ' + c.last4 + ' ' + c.orderNo + ' ' + c.pins).toLowerCase().indexOf(s) >= 0;
@@ -782,13 +789,13 @@
           tb.innerHTML = rows.slice(0, 1000).map(function (c) {
             return '<tr class="' + (c.entered ? 'hl' : '') + '"><td>' + esc(String(c.changedAt).slice(5, 16)) + '</td>' +
               '<td><span class="tag ' + (c.status === '환불요청' ? 'amber' : 'blue') + '">' + esc(c.status) + '</span>' + (c.entered ? ' <span class="tag" style="background:var(--red);color:#fff">입장 후</span>' : '') + '</td>' +
-              '<td>' + ((c.realNames && c.realNames.length) ? '<b>' + esc(c.realNames.join(', ')) + '</b><br><small style="color:var(--muted)">명단 ' + esc(c.maskedName) + '</small>' : '<b>' + esc(c.maskedName) + '</b>') + '</td><td>' + esc(c.last4) + '</td><td class="num">' + num(c.tickets) + '</td>' +
+              '<td>' + ((c.realNames && c.realNames.length) ? '<b>' + esc(c.realNames.join(', ')) + '</b><br><small style="color:var(--muted)">명단 ' + esc(c.maskedName) + '</small>' : '<b>' + esc(c.maskedName) + '</b>') + ticketLine(c) + '</td><td>' + esc(c.last4) + '</td><td class="num">' + num(c.tickets) + '</td>' +
               '<td style="font-size:12.5px">' + esc(c.orderNo) + '</td><td style="font-size:12.5px">' + esc(c.channel) + '</td>' +
               '<td>' + esc(String(c.buyDate).slice(5, 16)) + '</td>' +
               '<td style="font-size:13.5px;line-height:1.45">' + (function () {
                 if (!c.entered && !c.afterN) return '<span style="color:var(--muted)">입장 기록 없음</span>';
                 var bb = (D.buyers || []).filter(function (x) { return x.key === c.key; })[0];
-                var v = bb ? bb.tickets : 0, mx = bb ? bb.maxPeople : 0;
+                var v = Number(c.valid) || 0, mx = bb ? bb.maxPeople : 0;
                 var head = c.entered
                   ? '<b style="color:var(--red)">입장한 뒤 ' + (c.status === '환불요청' ? '환불요청' : '취소') + '</b><br>취소 전 ' + c.entered + '번 입장 (마지막 ' + esc(String(c.lastEntry).slice(5, 16)) + ')'
                   : '<b style="color:var(--ink-2)">입장 전에 취소</b><br>남은 티켓으로 ' + c.afterN + '번 입장';
