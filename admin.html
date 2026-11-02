@@ -531,6 +531,14 @@
       var wrap = el.querySelector('.daytabs'), cur = el.querySelector('.daytabs button[data-day="' + DAY_SEL + '"]');
       if (wrap && cur) wrap.scrollLeft = Math.max(0, cur.offsetLeft - wrap.clientWidth / 2 + cur.clientWidth / 2);
     }
+    function validNow(key) { var bb = (D.buyers || []).filter(function (x) { return x.key === key; })[0]; return bb ? bb.tickets : 0; }
+    function cxOf(key) { var bk = ((D.meta.cancel || {}).byKey || {})[key]; return bk || { c: 0, r: 0 }; }
+    function buyLine(key, valid, always) {
+      var x = cxOf(key), v = Number(valid) || 0;
+      if (!always && !x.c && !x.r) return '';
+      return '<br><small style="font-weight:700;color:var(--ink-2);white-space:nowrap">구매 ' + (v + x.c + x.r) + '장' + (x.c ? ' · 취소 ' + x.c + '장' : '') + (x.r ? ' · 환불요청 ' + x.r + '장' : '') +
+        ' · ' + (v ? '<span style="color:var(--green-text,#1F7A4A)">남은 ' + v + '장</span>' : '<span style="color:var(--red)">남은 0장</span>') + '</small>';
+    }
     function ageText(ages) {
       var bands = D.meta.ageBands || [];
       return (ages || []).map(function (n, i) { return n ? String(bands[i] || '').replace(/\(.*\)/, '') + ' ' + n : ''; }).filter(Boolean).join(' · ');
@@ -618,7 +626,7 @@
             if (r.dup) tags.push('<span class="tag blue">재입장</span>');
             if (r.method === '수동') tags.push('<span class="tag amber">직원 수동</span>');
             if (r.test) tags.push('<span class="tag">테스트</span>');
-            return '<tr><td>' + esc(String(r.time).slice(11, 16)) + '</td><td>' + esc(mShort[r.museumId] || r.museumName) + '</td><td><b>' + esc(r.typedName) + '</b></td><td>' + esc(r.last4) + '</td>' +
+            return '<tr><td>' + esc(String(r.time).slice(11, 16)) + '</td><td>' + esc(mShort[r.museumId] || r.museumName) + '</td><td><b>' + esc(r.typedName) + '</b>' + buyLine(r.key, validNow(r.key)) + '</td><td>' + esc(r.last4) + '</td>' +
               '<td class="num">' + num(r.people) + '</td><td style="font-size:12.5px">' + esc(detailText(r)) + '</td><td>' + esc(r.region) + '</td><td>' + tags.join(' ') + '</td></tr>';
           }).join('') || '<tr><td colspan="8" class="empty">조건에 맞는 내역이 없어요.</td></tr>';
         }
@@ -699,7 +707,7 @@
       el.innerHTML = '<section class="glass panel"><h2>구매자별 방문 이력</h2>' +
         '<p class="desc">입장 기록이 있는 구매자 ' + num(D.buyers.length) + '명. 성함·뒷자리로 찾을 수 있어요. <span class="tag amber">노란 줄</span>은 같은 명단 구매자에 서로 다른 성함이 입력된 경우예요.</p>' +
         '<div class="row"><input type="search" id="q" placeholder="예) 홍길동, 2222"></div>' +
-        '<div class="tbl-wrap"><table><thead><tr><th>성함(실명)</th><th>뒷자리</th><th class="num">구매</th><th class="num">입장 횟수</th>' +
+        '<div class="tbl-wrap"><table><thead><tr><th>성함(실명)</th><th>뒷자리</th><th class="num">유효 티켓</th><th class="num">입장 횟수</th>' +
         ms.map(function (m) { return '<th title="' + esc(m.name) + '">' + esc(m.short.replace('미술관', '')) + '</th>'; }).join('') +
         '<th>첫 입장</th><th>마지막</th><th class="num">최대 인원</th><th>지역</th><th>명단이름(참고)</th></tr></thead><tbody id="tb"></tbody></table></div></section>';
       var tb = el.querySelector('#tb'), q = el.querySelector('#q');
@@ -711,7 +719,7 @@
         });
         tb.innerHTML = list.slice(0, 500).map(function (b) {
           return '<tr class="' + (b.nameConflict ? 'hl' : '') + '"><td><b>' + esc(b.displayName) + '</b>' + (b.method === '수동' ? ' <span class="tag blue">수동</span>' : '') + '</td><td>' + esc(b.last4) + '</td>' +
-            '<td class="num">' + num(b.tickets) + '</td><td class="num">' + num(b.entries) + '</td>' +
+            '<td class="num">' + num(b.tickets) + buyLine(b.key, b.tickets) + '</td><td class="num">' + num(b.entries) + '</td>' +
             ms.map(function (m) { var c = b.museums[m.id] || 0; return '<td title="' + c + '회"><span class="dot ' + (c ? '' : 'off') + '"></span>' + (c > 1 ? ' ' + c : '') + '</td>'; }).join('') +
             '<td>' + esc(b.first.slice(5, 16)) + '</td><td>' + esc(b.last.slice(5, 16)) + '</td><td class="num">' + b.maxPeople + '</td><td>' + esc(b.region) + '</td>' +
             '<td style="color:var(--muted)">' + esc(b.maskedName) + '</td></tr>';
@@ -816,7 +824,7 @@
       var conflicts = D.merged.filter(function (x) { return x.nameConflict; });
       var mergedOnly = D.merged.filter(function (x) { return !x.nameConflict; });
       var recRow = function (r) {
-        return '<tr><td>' + esc(r.time.slice(5, 16)) + '</td><td>' + esc(r.museumName) + '</td><td><b>' + esc(r.typedName) + '</b></td><td>' + esc(r.last4) + '</td><td class="num">' + r.people + '</td><td>' + esc(r.region) + '</td><td>' + esc(r.prev || '') + '</td><td style="color:var(--muted)">' + esc(r.maskedName) + '</td></tr>';
+        return '<tr><td>' + esc(r.time.slice(5, 16)) + '</td><td>' + esc(r.museumName) + '</td><td><b>' + esc(r.typedName) + '</b>' + buyLine(r.key, validNow(r.key)) + '</td><td>' + esc(r.last4) + '</td><td class="num">' + r.people + '</td><td>' + esc(r.region) + '</td><td>' + esc(r.prev || '') + '</td><td style="color:var(--muted)">' + esc(r.maskedName) + '</td></tr>';
       };
       var recHead = '<thead><tr><th>일시</th><th>미술관</th><th>성함(실명)</th><th>뒷자리</th><th class="num">인원</th><th>지역</th><th>직전 입장</th><th>명단이름(참고)</th></tr></thead>';
       el.innerHTML =
@@ -837,7 +845,7 @@
       if (!list.length) return '<div class="empty">없어요.</div>';
       return '<div class="tbl-wrap" style="max-height:420px"><table><thead><tr><th>성함(실명)</th><th>명단이름(참고)</th><th>뒷자리</th><th class="num">총 매수</th><th class="num">주문 수</th><th>채널</th><th>입장</th><th>주문번호</th></tr></thead><tbody>' +
         list.map(function (x) {
-          return '<tr class="' + (x.nameConflict ? 'hl' : '') + '"><td><b>' + esc(x.typedNames.join(', ') || '-') + '</b></td><td style="color:var(--muted)">' + esc(x.maskedName) + '</td><td>' + esc(x.last4) + '</td><td class="num">' + x.tickets + '</td><td class="num">' + x.orders.length + '</td><td>' + esc(x.channels.join(', ')) + '</td><td>' + (x.entered ? '<span class="tag green">입장함</span>' : '') + '</td>' +
+          return '<tr class="' + (x.nameConflict ? 'hl' : '') + '"><td><b>' + esc(x.typedNames.join(', ') || '-') + '</b></td><td style="color:var(--muted)">' + esc(x.maskedName) + '</td><td>' + esc(x.last4) + '</td><td class="num">' + x.tickets + buyLine(x.key, x.tickets) + '</td><td class="num">' + x.orders.length + '</td><td>' + esc(x.channels.join(', ')) + '</td><td>' + (x.entered ? '<span class="tag green">입장함</span>' : '') + '</td>' +
             '<td>' + esc(x.orders.join(', ')) + '</td></tr>';
         }).join('') + '</tbody></table></div>';
     }
@@ -1178,8 +1186,8 @@
         call('adminRecords', TOKEN).then(function (rs) {
           b.disabled = false;
           downloadCsv('입장기록_' + m.now.slice(0, 10) + '.csv',
-            ['입장ID', '일시', '미술관', '성함(실명)', '뒷자리', '입장인원', '지역', '구매매수', '확인방식', '2시간내재입장', '테스트', '직전입장', '명단이름(참고)'].concat((m.ageBands || []).map(function (a) { return '연령_' + a; })).concat((m.genderBands || ['남성', '여성']).map(function (a) { return '성별_' + a; })).concat(['양주시첫방문']),
-            rs.map(function (r) { return [r.id, r.time, r.museumName, r.typedName, r.last4, r.people, r.region, r.tickets, r.method, r.dup ? 'Y' : '', r.test ? 'Y' : '', r.prev, r.maskedName].concat(r.ages || (m.ageBands || []).map(function () { return ''; })).concat(r.genders || (m.genderBands || ['남성', '여성']).map(function () { return ''; })).concat([r.firstVisit || '']); }));
+            ['입장ID', '일시', '미술관', '성함(실명)', '뒷자리', '입장인원', '지역', '구매매수', '확인방식', '2시간내재입장', '테스트', '직전입장', '명단이름(참고)'].concat((m.ageBands || []).map(function (a) { return '연령_' + a; })).concat((m.genderBands || ['남성', '여성']).map(function (a) { return '성별_' + a; })).concat(['양주시첫방문', '현재유효티켓', '취소장수', '환불요청장수']),
+            rs.map(function (r) { return [r.id, r.time, r.museumName, r.typedName, r.last4, r.people, r.region, r.tickets, r.method, r.dup ? 'Y' : '', r.test ? 'Y' : '', r.prev, r.maskedName].concat(r.ages || (m.ageBands || []).map(function () { return ''; })).concat(r.genders || (m.genderBands || ['남성', '여성']).map(function () { return ''; })).concat([r.firstVisit || '', validNow(r.key), cxOf(r.key).c, cxOf(r.key).r]); }));
         }).catch(function (e) { b.disabled = false; el.querySelector('#dlm').innerHTML = '<div class="notice err">' + esc(errMsg(e)) + '</div>'; });
       });
       el.querySelector('#del').addEventListener('click', function () {
