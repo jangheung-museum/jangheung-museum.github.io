@@ -588,7 +588,7 @@
         var nG = Object.keys(groups).length;
         var museums = m.museums.map(function (mm) { return { label: mm.short, value: byM[mm.id] || 0, extra: '입장 ' + (byMe[mm.id] || 0) + '건', color: MCOL[mm.id] }; });
         var hours = []; for (var h = 9; h <= 18; h++) hours.push({ label: h + '시', short: String(h), value: byH[h] || 0 });
-        var regions = Object.keys(byR).map(function (k) { return { label: k, value: byR[k] }; }).sort(function (a, b) { return b.value - a.value; });
+        var regions = Object.keys(byR).map(function (k) { return { label: k || '미입력', value: byR[k] }; }).sort(function (a, b) { return b.value - a.value; });
         var ages = (m.ageBands || []).map(function (a) { return { label: a, value: byA[a] || 0 }; });
         box.className = '';
         if (!rs.length) { box.innerHTML = '<section class="glass panel"><h2>' + esc(md(d)) + ' 내역</h2><div class="empty">이날 입장 기록이 없어요.</div></section>'; return; }
@@ -647,7 +647,7 @@
         return { label: mm.short, value: x.people, extra: '입장 ' + x.entries + '건 · 그룹 ' + x.groups, color: MCOL[mm.id] };
       });
       var regionSrc = REGION_MODE === 'unique' ? D.byRegionUnique : D.byRegionEntries;
-      var regions = Object.keys(regionSrc).map(function (k) { return { label: k, value: regionSrc[k] }; });
+      var regions = Object.keys(regionSrc).map(function (k) { return { label: k || '미입력', value: regionSrc[k] }; });
       var ageSrc = REGION_MODE === 'unique' ? (D.byAgeUnique || {}) : (D.byAgeEntries || {});
       var ages = (m.ageBands || []).map(function (a) { return { label: a, value: ageSrc[a] || 0 }; });
       var dayList = daysBetween(m.start, m.end);
